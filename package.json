@@ -4,9 +4,9 @@
 	"publisher": "sideshow-systems",
 	"repository": {
 		"type": "git",
-		"url": "https://gitlab.softsystem.de/f.binder/vscode-theme-favorites.git"
+		"url": "https://github.com/sideshow-systems/vscode-theme-favorites"
 	},
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"engines": {
 		"vscode": "^1.60.0"
 	},
@@ -67,7 +67,8 @@
 		"compile": "tsc -p ./",
 		"watch": "tsc -w -p ./",
 		"postinstall": "node ./node_modules/vscode/bin/install || true",
-		"build-package": "npx vsce package --baseContentUrl \"https://gitlab.softsystem.de/f.binder/vscode-theme-favorites/-/raw/main\" --baseImagesUrl \"https://gitlab.softsystem.de/f.binder/vscode-theme-favorites/-/raw/main\""
+		"build-package": "npx vsce package",
+		"git:push2github": "git push -u github main"
 	},
 	"devDependencies": {
 		"@types/node": "^18.0.0",

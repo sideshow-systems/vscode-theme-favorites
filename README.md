@@ -1,65 +1,106 @@
-# Theme Favorites (VS Code)
+# Theme Favorites for VS Code
 
-Kleine VS Code Erweiterung, um installierte Themes als Favoriten zu markieren und schnell zwischen ihnen zu wechseln.
+Quickly manage and switch between your favorite VS Code themes. This extension allows you to mark installed themes as favorites and switch between them with a single click or command.
 
-Schnellstart
-- Abhängigkeiten installieren:
+## Features
 
-```bash
-npm install
-```
+- **Add/Remove Favorites**: Mark your preferred themes as favorites using the Command Palette
+- **Quick Switch**: Switch between favorite themes instantly
+- **Explorer View**: Visual sidebar showing all your favorite themes
+- **One-Click Selection**: Click on any favorite theme in the explorer to activate it
+- **Easy Management**: Remove themes from favorites when you no longer need them
 
-- TypeScript kompilieren:
+## Getting Started
 
-```bash
-npm run compile
-```
+### Installation
 
-- Extension in VS Code starten: `F5` drücken (Debug-Konfiguration: Run Extension).
+1. Open VS Code
+2. Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
+3. Search for "Theme Favorites"
+4. Click Install
 
-Benutzung
-- Öffne die Command Palette und suche nach "Theme Favorites: Add Favorite" um ein Theme zur Favoritenliste hinzuzufügen.
-- Über "Theme Favorites: Choose Favorite" kannst du ein Favorit‑Theme auswählen und aktivieren.
-- Im Explorer gibt es eine View "Theme Favorites" mit deinen Favoriten (klicken wechselt das Theme).
+### Usage
 
-Dateien
-- package.json — Extension-Metadaten und Commands
-- src/extension.ts — Aktivierung & Befehle
-- src/favoritesProvider.ts — TreeView Provider für Favoriten
+1. **Add a Favorite Theme**:
+   - Open Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
+   - Search for "Theme Favorites: Add Favorite"
+   - Select a theme from the list to add it to favorites
 
-## CI/CD — Veröffentlichung via GitLab
+2. **Switch Between Favorites**:
+   - Open Command Palette and select "Theme Favorites: Choose Favorite"
+   - Or click any theme in the "Theme Favorites" view in the Explorer sidebar
 
-Diese Repo enthält eine GitLab CI Konfiguration [.gitlab-ci.yml](.gitlab-ci.yml), die bei gesetztem Git‑Tag ein Paket baut und in den VS Code Marketplace veröffentlicht.
+3. **Remove from Favorites**:
+   - Right-click on a theme in the "Theme Favorites" view
+   - Select "Theme Favorites: Remove Favorite"
 
-1) Persönliches Access Token (PAT) erstellen:
-	- Erstelle ein Azure DevOps Personal Access Token (PAT) mit Scope "Marketplace (publish)".
-	- Siehe: https://aka.ms/azure-devops-create-pat
+4. **Toggle Theme**:
+   - Use "Theme Favorites: Toggle Favorite" to quickly add/remove the current theme
 
-2) GitLab CI Variable anlegen:
-	- Projekt → Settings → CI / CD → Variables
-	- Name: `VSCE_PAT`
-	- Wert: dein PAT
-	- Optionen: Masked = true, Protected = true
+## Commands
 
-3) Veröffentlichung auslösen:
-	- Erstelle ein Tag und pushe es:
-	  ```
-	  git tag v1.0.0
-	  git push origin --tags
-	  ```
-	- Die Pipeline baut ein `.vsix` und veröffentlicht es automatisch (nur bei Tags).
+- `Theme Favorites: Add Favorite` - Add a theme to your favorites
+- `Theme Favorites: Remove Favorite` - Remove a theme from favorites
+- `Theme Favorites: Choose Favorite` - Select and switch to a favorite theme
+- `Theme Favorites: Toggle Favorite` - Toggle the current theme as favorite
+- `Theme Favorites: Open Theme` - Open theme settings
+- `Theme Favorites: Refresh` - Refresh the favorites list
 
-4) Lokal testen:
-	- Paket erstellen:
-	  ```
-	  npx vsce package
-	  code --install-extension *.vsix
-	  ```
-	- Veröffentlichen lokal:
-	  ```
-	  npx vsce publish --pat "$VSCE_PAT"
-	  ```
+## Development
 
-Hinweis:
-- Der Self‑Hosted Runner benötigt ausgehenden Netzwerkzugriff.
-- Prüfe `package.json` auf Felder `publisher`, `name`, `version`, `engines.vscode`.
+### Quick Start
+
+- Install dependencies:
+  ```bash
+  npm install
+  ```
+
+- Compile TypeScript:
+  ```bash
+  npm run compile
+  ```
+
+- Start the extension in VS Code: Press `F5` (Run Extension debug configuration)
+
+### Project Structure
+
+- `package.json` — Extension metadata and command definitions
+- `src/extension.ts` — Extension activation and command handlers
+- `src/favoritesProvider.ts` — TreeView provider for favorites explorer
+- `src/themesProvider.ts` — Theme management provider
+- `src/favoritesWebviewProvider.ts` — Webview for favorites UI
+- `src/themesWebviewProvider.ts` — Webview for themes UI
+
+### Setup Instructions
+
+1. **Create Personal Access Token (PAT)**:
+   - Create an Azure DevOps Personal Access Token with "Marketplace (publish)" scope
+   - See: https://aka.ms/azure-devops-create-pat
+
+2. **Add GitLab CI Variable**:
+   - Go to Project → Settings → CI / CD → Variables
+   - Add variable `VSCE_PAT` with your PAT token
+   - Check "Masked" and "Protected" options
+
+3. **Trigger Publication**:
+   - Create and push a Git tag:
+     ```bash
+     git tag v1.0.1
+     git push origin --tags
+     ```
+   - The pipeline automatically builds and publishes to the marketplace
+
+4. **Local Testing**:
+   ```bash
+   # Create package
+   npx vsce package
+   # Install locally
+   code --install-extension *.vsix
+   # Or publish directly
+   npx vsce publish --pat "$VSCE_PAT"
+   ```
+
+## Notes
+
+- The self-hosted GitLab runner requires outbound network access
+- Verify `package.json` contains correct fields: `publisher`, `name`, `version`, and `engines.vscode`
