@@ -81,7 +81,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); padding: 8px; }
-#content { background-color: rgba(255,255,255,0.015); padding:8px; border-radius:6px; }
+.themeItem.active { outline: 2px solid var(--vscode-focusBorder); }
+#content { background-color: rgba(255,255,255,0.03); padding:8px; border-radius:6px; }
 .group h3 { font-weight: 600; font-size: 1.05em; margin-bottom:6px; }
 .themeItem { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:4px; margin:2px 0; cursor:pointer; }
 .themeItem .left { display:flex; gap:8px; align-items:center; }
@@ -100,12 +101,30 @@ let themes = [];
 let favorites = [];
 let activeTheme = '';
 
+function normalizeName(s) {
+    if (!s) return '';
+    try {
+        return s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().replace(/[^a-z0-9 ]/g, '');
+    } catch (e) {
+        return s.toLowerCase();
+    }
+}
+
+function isSameTheme(a, b) {
+    const na = normalizeName(a);
+    const nb = normalizeName(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
+    return false;
+}
+
 function groupThemes(list) {
  const groups = { dark: [], light: [], unknown: [] };
  for (const t of list) {
-  const ui = (t.uiTheme || '').toLowerCase();
-  const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
-  groups[kind].push(t);
+    const ui = (t.uiTheme || '').toLowerCase();
+    const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+    groups[kind].push(t);
  }
  return groups;
 }
@@ -114,24 +133,25 @@ function render() {
  const container = document.getElementById('groups'); container.innerHTML = '';
  const groups = groupThemes(themes);
  for (const key of ['dark','light','unknown']) {
-  const arr = groups[key]; if (!arr || arr.length === 0) continue;
-  const groupEl = document.createElement('div'); groupEl.className = 'group';
-  const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark' : (key === 'light' ? 'Light' : 'Other'); groupEl.appendChild(title);
-  for (const t of arr) {
-    const item = document.createElement('div'); item.className = 'themeItem';
-    const left = document.createElement('div'); left.className = 'left';
-    const lbl = document.createElement('div'); lbl.className = 'label'; lbl.textContent = t.label;
-    const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = t.extDisplay || t.extId || '';
-    left.appendChild(lbl); left.appendChild(meta);
-    const right = document.createElement('div');
-    const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = 'Remove';
-    btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
-    item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
-    right.appendChild(btn);
-    item.appendChild(left); item.appendChild(right);
-    groupEl.appendChild(item);
-  }
-  container.appendChild(groupEl);
+    const arr = groups[key]; if (!arr || arr.length === 0) continue;
+    const groupEl = document.createElement('div'); groupEl.className = 'group';
+    const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark' : (key === 'light' ? 'Light' : 'Other'); groupEl.appendChild(title);
+    for (const t of arr) {
+        const active = isSameTheme(t.label, activeTheme);
+        const item = document.createElement('div'); item.className = 'themeItem' + (active ? ' active' : '');
+        const left = document.createElement('div'); left.className = 'left';
+        const lbl = document.createElement('div'); lbl.className = 'label'; lbl.textContent = t.label;
+        const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = t.extDisplay || t.extId || '';
+        left.appendChild(lbl); left.appendChild(meta);
+        const right = document.createElement('div');
+        const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = 'Remove';
+        btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
+        item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
+        right.appendChild(btn);
+        item.appendChild(left); item.appendChild(right);
+        groupEl.appendChild(item);
+    }
+    container.appendChild(groupEl);
  }
 }
 

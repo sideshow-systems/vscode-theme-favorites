@@ -133,7 +133,7 @@ body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foregr
 .themeItem { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:4px; margin:2px 0; background:transparent; cursor:pointer; }
 .themeItem.active { outline: 2px solid var(--vscode-focusBorder); }
 .group h3 { font-weight: 600; font-size: 1.05em; margin-bottom:6px; }
-#content { background-color: rgba(255,255,255,0.015); padding:8px; border-radius:6px; }
+#content { background-color: rgba(255,255,255,0.03); padding:8px; border-radius:6px; }
 .themeItem .left { display:flex; gap:8px; align-items:center; }
 .themeItem .label { font-size:0.95em; }
 .themeItem .meta { font-size:0.8em; color:var(--vscode-editorHint-foreground); }
@@ -155,45 +155,64 @@ let themes = [];
 let favorites = [];
 let activeTheme = '';
 
+function normalizeName(s) {
+	if (!s) return '';
+	try {
+		return s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().replace(/[^a-z0-9 ]/g, '');
+	} catch (e) {
+		return s.toLowerCase();
+	}
+}
+
+function isSameTheme(a, b) {
+	const na = normalizeName(a);
+	const nb = normalizeName(b);
+	if (!na || !nb) return false;
+	if (na === nb) return true;
+	if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
+	return false;
+}
+
 function setActive(name) { activeTheme = name || ''; render(); }
 function updateFavorites(list) { favorites = list || []; render(); }
 
 function groupThemes(list) {
-const groups = { dark: [], light: [], unknown: [] };
-for (const t of list) {
- const ui = (t.uiTheme || '').toLowerCase();
- const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
- groups[kind].push(t);
-}
-return groups;
+	const groups = { dark: [], light: [], unknown: [] };
+	for (const t of list) {
+		const ui = (t.uiTheme || '').toLowerCase();
+		const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+		groups[kind].push(t);
+	}
+	return groups;
 }
 
 function render() {
- const q = document.getElementById('search').value.trim().toLowerCase();
- const groups = groupThemes(themes);
- const container = document.getElementById('groups');
- container.innerHTML = '';
- for (const key of ['dark','light','unknown']) {
- const arr = groups[key]; if (!arr || arr.length === 0) continue;
- const groupEl = document.createElement('div'); groupEl.className = 'group';
- const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark Themes' : (key === 'light' ? 'Light Themes' : 'Other Themes'); groupEl.appendChild(title);
-			for (const t of arr) {
-				if (q && !t.label.toLowerCase().includes(q)) continue;
-				const item = document.createElement('div'); item.className = 'themeItem' + (t.label === activeTheme ? ' active' : '');
-				const left = document.createElement('div'); left.className = 'left';
-				const lbl = document.createElement('div'); lbl.className = 'label'; lbl.textContent = t.label;
-				const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = t.extDisplay || t.extId || '';
-				left.appendChild(lbl); left.appendChild(meta);
- const right = document.createElement('div');
- const star = document.createElement('button'); star.className = 'btn star'; star.innerText = favorites.includes(t.label) ? '★' : '☆';
- star.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'toggleFavorite', name: t.label }); };
- item.onclick = () => { vscode.postMessage({ command: 'applyTheme', name: t.label }); };
- right.appendChild(star);
- item.appendChild(left); item.appendChild(right);
- groupEl.appendChild(item);
- }
- container.appendChild(groupEl);
- }
+	const q = document.getElementById('search').value.trim().toLowerCase();
+	const groups = groupThemes(themes);
+	const container = document.getElementById('groups');
+	container.innerHTML = '';
+	for (const key of ['dark','light','unknown']) {
+		const arr = groups[key]; if (!arr || arr.length === 0) continue;
+		const groupEl = document.createElement('div'); groupEl.className = 'group';
+		const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark' : (key === 'light' ? 'Light' : 'Other'); groupEl.appendChild(title);
+		for (const t of arr) {
+			if (q && !t.label.toLowerCase().includes(q)) continue;
+			const active = isSameTheme(t.label, activeTheme);
+			const item = document.createElement('div'); item.className = 'themeItem' + (active ? ' active' : '');
+			const left = document.createElement('div'); left.className = 'left';
+			const lbl = document.createElement('div'); lbl.className = 'label'; lbl.textContent = t.label;
+			const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = t.extDisplay || t.extId || '';
+			left.appendChild(lbl); left.appendChild(meta);
+			const right = document.createElement('div');
+			const star = document.createElement('button'); star.className = 'btn star'; star.innerText = favorites.includes(t.label) ? '★' : '☆';
+			star.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'toggleFavorite', name: t.label }); };
+			item.onclick = () => { vscode.postMessage({ command: 'applyTheme', name: t.label }); };
+			right.appendChild(star);
+			item.appendChild(left); item.appendChild(right);
+			groupEl.appendChild(item);
+		}
+		container.appendChild(groupEl);
+	}
 }
 
 window.addEventListener('message', event => {
