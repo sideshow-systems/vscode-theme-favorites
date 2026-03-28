@@ -2,6 +2,10 @@
 	"name": "vscode-theme-favorites",
 	"displayName": "Theme Favorites",
 	"publisher": "sideshow-systems",
+	"repository": {
+		"type": "git",
+		"url": "https://gitlab.softsystem.de/f.binder/vscode-theme-favorites.git"
+	},
 	"version": "1.0.0",
 	"engines": {
 		"vscode": "^1.60.0"
