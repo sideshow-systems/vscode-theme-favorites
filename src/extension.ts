@@ -30,7 +30,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(out);
 
 	const favoritesWebview = new FavoritesWebviewProvider(context.extensionUri, context, themesProvider, out);
-	const themesWebview = new ThemesWebviewProvider(context.extensionUri, context, themesProvider, out);
+	const themesWebview = new ThemesWebviewProvider(context.extensionUri, context, themesProvider, out, async () => {
+		try { await favoritesWebview.refresh(); } catch (e) { out.appendLine(`favoritesWebview.refresh() failed: ${e}`); }
+	});
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(FavoritesWebviewProvider.viewType, favoritesWebview, { webviewOptions: { retainContextWhenHidden: true } }),
@@ -128,7 +130,11 @@ async function removeFavorite(context: vscode.ExtensionContext, name: string, fa
 	const newFavs = favs.filter(f => f !== name);
 	await context.globalState.update(FAVORITES_KEY, newFavs);
 	try { await favoritesWebview.refresh(); } catch (e) { /* ignore */ }
-	themesProvider.refresh();
+	try {
+		await vscode.commands.executeCommand('themeFavorites.refresh');
+	} catch (e) {
+		try { themesProvider.refresh(); } catch (_) { /* ignore */ }
+	}
 	vscode.window.showInformationMessage(`Favorit entfernt: ${name}`);
 }
 

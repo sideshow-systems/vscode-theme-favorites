@@ -20,8 +20,10 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	 * @param _themesProvider Backend‑Provider für Theme‑Listen
 	 * @param _out optionaler OutputChannel für Diagnostics
 	 */
-	constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext, private readonly _themesProvider: ThemesProvider, out?: vscode.OutputChannel) {
+	private _favoritesRefresh?: () => Promise<void>;
+	constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext, private readonly _themesProvider: ThemesProvider, out?: vscode.OutputChannel, favoritesRefresh?: () => Promise<void>) {
 		this._out = out;
+		this._favoritesRefresh = favoritesRefresh;
 	}
 
 	/**
@@ -58,9 +60,23 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 								favs.push(message.name);
 								await this._context.globalState.update(FAVORITES_KEY, favs);
 							}
+							// refresh internal provider state
 							this._themesProvider.refresh();
+							// notify this webview
 							const updatedFavs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
 							webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: updatedFavs });
+							// also notify favorites webview (if available)
+							try {
+								if (this._favoritesRefresh) await this._favoritesRefresh();
+							} catch (e) {
+								this._out?.appendLine(`favorites refresh callback failed: ${e}`);
+							}
+							// ensure any other view (TreeView or older registrations) also refresh via the public command
+							try {
+								await vscode.commands.executeCommand('themeFavorites.refresh');
+							} catch (e) {
+								this._out?.appendLine(`executeCommand refresh failed: ${e}`);
+							}
 							break;
 						case 'refresh':
 							await this._sendInit();

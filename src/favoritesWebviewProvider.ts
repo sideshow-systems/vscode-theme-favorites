@@ -40,6 +40,12 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                             await this._sendInit();
                             this._themesProvider.refresh();
                             webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: newFavs });
+                            // Trigger global refresh so Themes webview updates its star state as well
+                            try {
+                                await vscode.commands.executeCommand('themeFavorites.refresh');
+                            } catch (e) {
+                                this._out?.appendLine(`executeCommand refresh failed: ${e}`);
+                            }
                             break;
                         case 'refresh':
                             await this._sendInit();
