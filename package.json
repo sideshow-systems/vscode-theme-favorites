@@ -32,8 +32,8 @@
 		},
 		"views": {
 			"theme-favorites": [
-				{ "id": "theme-favorites-themes", "name": "All Themes" },
-				{ "id": "theme-favorites-favorites", "name": "Favorites" }
+				{ "id": "theme-favorites-favorites", "name": "Favorites" },
+				{ "id": "theme-favorites-themes", "name": "All Themes" }
 			]
 		},
 		"commands": [
