@@ -1,0 +1,32 @@
+# GitLab CI für Veröffentlichung ins Visual Studio Marketplace
+# Trigger: Veröffentlichungen werden durch Git-Tags ausgelöst (z.B. v1.2.3).
+
+image: node:18
+
+stages:
+  - package
+  - publish
+
+package:
+  stage: package
+  script:
+    - npm ci
+    - npm install -g vsce
+    - npx vsce package
+  artifacts:
+    paths:
+      - "*.vsix"
+    expire_in: 1 day
+
+publish:
+  stage: publish
+  needs:
+    - package
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: on_success
+    - when: never
+  script:
+    - npm ci
+    - npm install -g vsce
+    - npx vsce publish --pat "$VSCE_PAT"
