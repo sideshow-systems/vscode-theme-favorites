@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 /**
 	* Schlüssel für die Speicherung der Favoriten in `globalState`.
@@ -46,12 +47,21 @@ export class ThemeItem extends vscode.TreeItem {
 	}
 }
 
+export class GroupItem extends vscode.TreeItem {
+	constructor(public readonly label: string, public readonly kind: 'dark' | 'light' | 'unknown') {
+		super(label, vscode.TreeItemCollapsibleState.Collapsed);
+		this.contextValue = 'group';
+	}
+}
+
 /**
   * Provider für die vollständige Liste der installierten Themes.
   */
-export class ThemesProvider implements vscode.TreeDataProvider<ThemeItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<ThemeItem | undefined | void> = new vscode.EventEmitter();
-	readonly onDidChangeTreeData: vscode.Event<ThemeItem | undefined | void> = this._onDidChangeTreeData.event;
+export type ThemeNode = ThemeItem | GroupItem;
+
+export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
+	private _onDidChangeTreeData: vscode.EventEmitter<ThemeNode | undefined | void> = new vscode.EventEmitter();
+	readonly onDidChangeTreeData: vscode.Event<ThemeNode | undefined | void> = this._onDidChangeTreeData.event;
 
 	/**
 	 * @param _context ExtensionContext (privat, mit Unterstrich)
@@ -65,24 +75,53 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeItem> {
 		this._onDidChangeTreeData.fire();
 	}
 
-	getTreeItem(element: ThemeItem): vscode.TreeItem {
-		return element;
-	}
+	  getTreeItem(element: ThemeNode): vscode.TreeItem {
+	    return element;
+	  }
 
-	async getChildren(): Promise<ThemeItem[]> {
+	  async getChildren(element?: ThemeNode): Promise<ThemeNode[]> {
 		const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
 		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-		const set = new Set<string>();
-		for (const ext of vscode.extensions.all) {
-			const contributes = ext.packageJSON && ext.packageJSON.contributes;
-			const themes = contributes && contributes.themes;
-			if (!themes) continue;
-			for (const t of themes) {
-				const label = typeof t === 'string' ? t : (t.label ?? t.id ?? t.path);
-				if (label) set.add(label);
-			}
+
+		// Root: return groups (dark, light, other)
+		if (!element) {
+			return [
+				new GroupItem('Dark Themes', 'dark'),
+				new GroupItem('Light Themes', 'light'),
+				new GroupItem('Other Themes', 'unknown')
+			];
 		}
-		const themes = Array.from(set).sort((a, b) => a.localeCompare(b));
-		return themes.map(t => new ThemeItem(t, favs.includes(t), isSameTheme(t, active)));
-	}
+
+		// If a group was expanded: return themes belonging to that kind
+		if (element instanceof GroupItem) {
+			const set = new Map<string, { label: string; uiTheme: string | undefined; extDisplay?: string; extId?: string; iconPath?: string | undefined; }>();
+			for (const ext of vscode.extensions.all) {
+				const contributes = ext.packageJSON && ext.packageJSON.contributes;
+				const themes = contributes && contributes.themes;
+				if (!themes) continue;
+				for (const t of themes) {
+					const label = typeof t === 'string' ? t : (t.label ?? t.id ?? t.path);
+					const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
+					if (!label) continue;
+					const kind = uiTheme && uiTheme.toLowerCase().includes('dark') ? 'dark' : (uiTheme && (uiTheme.toLowerCase().includes('vs') || uiTheme.toLowerCase().includes('light')) ? 'light' : 'unknown');
+					if (kind !== element.kind) continue;
+					if (!set.has(label)) {
+						set.set(label, { label, uiTheme, extDisplay: ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name), extId: ext.id, iconPath: ext.packageJSON && ext.packageJSON.icon ? path.join(ext.extensionPath, ext.packageJSON.icon) : undefined });
+					}
+				}
+			}
+			const items = Array.from(set.values()).sort((a, b) => a.label.localeCompare(b.label));
+			return items.map(i => {
+				const item = new ThemeItem(i.label, favs.includes(i.label), isSameTheme(i.label, active));
+				// augment tooltip with extension info
+				item.tooltip = `${i.label}\nFrom: ${i.extDisplay ?? i.extId}\nuiTheme: ${i.uiTheme ?? 'unknown'}`;
+				if (i.iconPath) {
+					item.iconPath = { light: vscode.Uri.file(i.iconPath), dark: vscode.Uri.file(i.iconPath) };
+				}
+				return item;
+			});
+		}
+
+		return [];
+	  }
 }
