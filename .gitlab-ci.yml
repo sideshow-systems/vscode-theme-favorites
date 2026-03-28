@@ -17,6 +17,8 @@ package:
     paths:
       - "*.vsix"
     expire_in: 1 day
+  tags:
+    - docker
 
 publish:
   stage: publish
@@ -30,3 +32,5 @@ publish:
     - npm ci
     - npm install -g vsce
     - npx vsce publish --pat "$VSCE_PAT"
+  tags:
+    - docker
