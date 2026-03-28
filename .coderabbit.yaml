@@ -1,0 +1,121 @@
+# Enables IDE autocompletion for this config file
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# Language for CodeRabbit's review comments
+language: de
+
+# Tone instructions for CodeRabbit's review comments
+tone_instructions: "Kollegialer, freundlicher Ton - wie ein erfahrener Entwickler im Code-Review. Locker, aber professionell; keine Steifheit, keine Kumpelsprache. Kritik konstruktiv und lösungsorientiert, Positives mit Ermutigung. Kurz und prägnant."
+
+# Enable experimental features
+early_access: true
+
+chat:
+  # CodeRabbit will automatically respond to @coderabbitai mentions in PR comments
+  auto_reply: true
+
+issue_enrichment:
+  # Enrich Gitlab issues with additional context and information
+  auto_enrich:
+    enabled: true
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_title_keywords:
+      - "/release-"
+
+  high_level_summary: true
+  review_status: false
+  review_details: true
+  sequence_diagrams: true
+  poem: false
+  collapse_walkthrough: true
+  changed_files_summary: true
+
+  high_level_summary_instructions: |
+    Fasse die Änderungen in diesem Merge Request auf hoher Ebene zusammen. Gehe dabei auf die folgenden Punkte ein:
+    - Was ist das Hauptziel dieses MRs? (z.B. Bugfix, neue Funktion, Refactoring)
+    - Welche wichtigen Änderungen wurden vorgenommen? (z.B. neue Module, wichtige Logikänderungen)
+    - Gibt es potenzielle Auswirkungen auf andere Teile des Systems? (z.B. Breaking Changes, Performance-Änderungen)
+    - Gibt es bekannte Risiken oder offene Fragen zu diesem MR?
+    - Erstelle eine kurze Zusammenfassung und anschließend eine Markdown-Tabelle mit den Spalten "Author" und "Geänderte Dateien" (für jeden Author die Pfade, idealerweise als Links)
+
+  request_changes_workflow: true
+
+  pre_merge_checks:
+    description:
+      mode: warning
+    custom_checks:
+      - mode: error
+        name: "Sensitive Data in Logs"
+        instructions: "Fail if any log statement may include passwords, API keys, tokens, SSNs, or payment card data. Check console.log, logger.*, print(), System.out.println, fmt.Print variants and templates."
+
+  # Exclude build artifacts and dependencies from reviews
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/out/**"
+    - "!**/dist/**"
+    - "!**/.vscode-test/**"
+    - "!**/coverage/**"
+
+  # Custom review instructions tailored for a VS Code Extension (TypeScript) project
+  path_instructions:
+    - path: "src/**/*.ts"
+      instructions: |
+        TypeScript + VS Code Extension best practices:
+        - Ensure commands registered in code match `contributes.commands` in `package.json` and are disposed in `context.subscriptions`.
+        - Use `ExtensionContext` correctly: prefer `globalState` for persistent data and `workspaceState` for workspace-scoped state.
+        - Avoid blocking work during activation; keep `activate()` fast and lazy-load heavy work.
+        - Always register disposables and clear timers/handlers on deactivate.
+        - Use `vscode.window.createOutputChannel()` for logs; do not leak secrets into logs.
+        - Implement `TreeDataProvider` and `TreeItem` with stable `id`/`contextValue` where appropriate for view menus.
+        - Use `workspace.getConfiguration().update()` with `ConfigurationTarget` explicitly and handle errors.
+        - Handle edge cases when enumerating `vscode.extensions.all` (missing `packageJSON.contributes` or unexpected shapes).
+        - Validate user inputs from `showQuickPick()` / `showInputBox()` and guard against null/undefined.
+        - Avoid synchronous file I/O on the main thread; use async APIs.
+
+    - path: "package.json"
+      instructions: |
+        Validate extension manifest and npm package metadata:
+        - `name` should be a valid npm package name (lowercase, no spaces). Consider renaming if it contains typos.
+        - `displayName` should be user-friendly and localized if necessary.
+        - Verify `engines.vscode` range and `publisher` if publishing to Marketplace/GitLab Package Registry.
+        - Ensure `main`/`out` point to the compiled JS files and `scripts` include build/test commands (`compile`, `watch`, `test`).
+        - Check `contributes` for `commands`, `activationEvents`, `viewsContainers`, `views`, and `menus` consistency.
+        - Verify that paths referenced (e.g., icons in `resources/`) actually exist in the repo.
+
+    - path: "tsconfig*.json"
+      instructions: |
+        Review TypeScript settings:
+        - Prefer `strict` mode; check for regressions in `noImplicitAny`/`strictNullChecks`.
+        - Ensure `rootDir`/`outDir` match the build scripts.
+        - Verify `esModuleInterop` and module resolution are compatible with the extension's build toolchain.
+
+    - path: "README.md"
+      instructions: |
+        Ensure README provides clear developer setup and usage:
+        - How to build (`npm install && npm run compile`), run (`F5`), and test the extension.
+        - Document available commands and contribution guidelines.
+        - Ensure any publishing steps or environment variables are documented.
+
+    - path: "resources/**/*"
+      instructions: |
+        Review resource files (icons, SVGs):
+        - Ensure icons are appropriately sized (128x128 or scalable SVG) and referenced correctly in `package.json`.
+        - No large binary blobs committed; prefer optimized SVG/PNG assets.
+
+    - path: ".vscode/**"
+      instructions: |
+        Check editor/debug config for consistency:
+        - `launch.json` should reference `out/**/*.js` and the correct `extensionDevelopmentPath`.
+        - `tasks.json` (if present) should align with `npm` scripts.
+
+    - path: "**/*.{spec,test}.{ts,js}"
+      instructions: |
+        Tests should use the recommended VS Code test runner (`@vscode/test-electron`) or Mocha:
+        - Keep tests deterministic and avoid network calls; mock external APIs.
+        - Verify tests register/unregister resources and do not depend on global state.
+        - Prefer small, focused unit tests for logic and integration tests for extension host behavior.
+
