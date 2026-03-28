@@ -1,0 +1,72 @@
+{
+	"name": "vscode-theme-favorits",
+	"displayName": "Theme Favorites",
+	"publisher": "Florian Binder",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.60.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:themeFavorites.addFavorite",
+		"onCommand:themeFavorites.removeFavorite",
+		"onCommand:themeFavorites.chooseFavorite",
+		"onCommand:themeFavorites.openTheme",
+		"onCommand:themeFavorites.toggleFavorite",
+		"onCommand:themeFavorites.refresh",
+		"onView:theme-favorites-themes",
+		"onView:theme-favorites-favorites"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "theme-favorites",
+					"title": "Theme Favorites",
+					"icon": "resources/icon.svg"
+				}
+			]
+		},
+		"views": {
+			"theme-favorites": [
+				{ "id": "theme-favorites-themes", "name": "All Themes" },
+				{ "id": "theme-favorites-favorites", "name": "Favorites" }
+			]
+		},
+		"commands": [
+			{ "command": "themeFavorites.addFavorite", "title": "Theme Favorites: Add Favorite" },
+			{ "command": "themeFavorites.removeFavorite", "title": "Theme Favorites: Remove Favorite" },
+			{ "command": "themeFavorites.chooseFavorite", "title": "Theme Favorites: Choose Favorite" },
+			{ "command": "themeFavorites.openTheme", "title": "Theme Favorites: Apply Theme" },
+			{ "command": "themeFavorites.toggleFavorite", "title": "Theme Favorites: Toggle Favorite" },
+			{ "command": "themeFavorites.refresh", "title": "Theme Favorites: Refresh View" }
+		],
+		"menus": {
+			"view/title": [
+				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-themes", "group": "navigation" },
+				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-favorites", "group": "navigation" }
+			],
+			"view/item/context": [
+				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-themes", "group": "navigation" },
+				{ "command": "themeFavorites.addFavorite", "when": "view == theme-favorites-themes && viewItem == notFavorited", "group": "inline" },
+				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-themes && viewItem == favorited", "group": "inline" },
+				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-favorites", "group": "navigation" },
+				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-favorites && viewItem == favoriteItem", "group": "inline" }
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -w -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install || true"
+	},
+	"devDependencies": {
+		"@types/node": "^18.0.0",
+		"typescript": "^4.9.5",
+		"vscode": "^1.1.37"
+	}
+}

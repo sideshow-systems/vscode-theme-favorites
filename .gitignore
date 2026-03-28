@@ -1,0 +1,42 @@
+# Node modules
+node_modules/
+
+# Compiled output
+out/
+dist/
+build/
+
+# VS Code settings and test output
+.vscode/
+.vscode-test/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.tgz
+*.log
+.cache/
+.parcel-cache/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
