@@ -71,6 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const name = getName(arg);
 			if (!name) return;
 			await vscode.workspace.getConfiguration('workbench').update('colorTheme', name, vscode.ConfigurationTarget.Global);
+			favoritesProvider.refresh();
+			themesProvider.refresh();
 			vscode.window.showInformationMessage(`Theme gewechselt: ${name}`);
 		}),
 
@@ -78,6 +80,16 @@ export function activate(context: vscode.ExtensionContext) {
 			favoritesProvider.refresh();
 			themesProvider.refresh();
 			vscode.window.showInformationMessage('Theme Favorites aktualisiert');
+		})
+	);
+
+	// Refresh views when the user changes the color theme externally
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration && e.affectsConfiguration('workbench.colorTheme')) {
+				favoritesProvider.refresh();
+				themesProvider.refresh();
+			}
 		})
 	);
 }

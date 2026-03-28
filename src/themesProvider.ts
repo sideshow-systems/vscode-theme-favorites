@@ -1,18 +1,42 @@
 import * as vscode from 'vscode';
 
 /**
-  * Schlüssel für die Speicherung der Favoriten in `globalState`.
-  */
+	* Schlüssel für die Speicherung der Favoriten in `globalState`.
+	*/
 const FAVORITES_KEY = 'favoriteThemes';
+
+function normalizeThemeName(name: string): string {
+	if (!name) return '';
+	return name
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/[^a-z0-9 ]/g, '');
+}
+
+function isSameTheme(a: string, b: string): boolean {
+	const na = normalizeThemeName(a);
+	const nb = normalizeThemeName(b);
+	if (!na || !nb) return false;
+	if (na === nb) return true;
+	// fallback: one contains the other (avoid very short matches)
+	if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
+	return false;
+}
 
 /**
   * Ein Theme‑Eintrag in der "All Themes" View.
   */
 export class ThemeItem extends vscode.TreeItem {
-	constructor(public readonly label: string, public readonly favorited: boolean) {
+	constructor(public readonly label: string, public readonly favorited: boolean, public readonly active: boolean) {
 		super(label, vscode.TreeItemCollapsibleState.None);
 		this.tooltip = label;
-		this.description = '';
+		this.description = active ? 'Active' : '';
+		if (active) {
+			this.iconPath = new vscode.ThemeIcon('check');
+		}
 		this.contextValue = favorited ? 'favorited' : 'notFavorited';
 		this.command = {
 			command: 'themeFavorites.openTheme',
@@ -47,6 +71,7 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeItem> {
 
 	async getChildren(): Promise<ThemeItem[]> {
 		const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
 		const set = new Set<string>();
 		for (const ext of vscode.extensions.all) {
 			const contributes = ext.packageJSON && ext.packageJSON.contributes;
@@ -58,6 +83,6 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeItem> {
 			}
 		}
 		const themes = Array.from(set).sort((a, b) => a.localeCompare(b));
-		return themes.map(t => new ThemeItem(t, favs.includes(t)));
+		return themes.map(t => new ThemeItem(t, favs.includes(t), isSameTheme(t, active)));
 	}
 }

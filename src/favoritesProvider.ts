@@ -11,11 +11,15 @@ const FAVORITES_KEY = 'favoriteThemes';
 export class FavoriteItem extends vscode.TreeItem {
 	/**
 	 * @param label Anzeige-Name des Themes
+	 * @param active Ob das Theme aktuell aktiv ist
 	 */
-	constructor(public readonly label: string) {
+	constructor(public readonly label: string, public readonly active: boolean) {
 		super(label, vscode.TreeItemCollapsibleState.None);
 		this.tooltip = label;
-		this.description = '';
+		this.description = active ? 'Active' : '';
+		if (active) {
+			this.iconPath = new vscode.ThemeIcon('check');
+		}
 		this.contextValue = 'favoriteItem';
 		this.command = {
 			command: 'themeFavorites.openTheme',
@@ -50,6 +54,25 @@ export class FavoritesProvider implements vscode.TreeDataProvider<FavoriteItem> 
 
 	getChildren(): Thenable<FavoriteItem[]> {
 		const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
-		return Promise.resolve((favs || []).map(f => new FavoriteItem(f)));
+		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
+		function normalizeThemeName(name: string): string {
+			if (!name) return '';
+			return name
+				.toLowerCase()
+				.normalize('NFKD')
+				.replace(/[\u0300-\u036f]/g, '')
+				.replace(/\s+/g, ' ')
+				.trim()
+				.replace(/[^a-z0-9 ]/g, '');
+		}
+		function isSameTheme(a: string, b: string): boolean {
+			const na = normalizeThemeName(a);
+			const nb = normalizeThemeName(b);
+			if (!na || !nb) return false;
+			if (na === nb) return true;
+			if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
+			return false;
+		}
+		return Promise.resolve((favs || []).map(f => new FavoriteItem(f, isSameTheme(f, active))));
 	}
 }
