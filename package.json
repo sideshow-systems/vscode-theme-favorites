@@ -1,13 +1,13 @@
 {
-	"name": "vscode-theme-favorits",
+	"name": "vscode-theme-favorites",
 	"displayName": "Theme Favorites",
-	"publisher": "Florian Binder",
-	"version": "0.0.1",
+	"publisher": "sideshow-systems",
+	"version": "1.0.0",
 	"engines": {
 		"vscode": "^1.60.0"
 	},
 	"categories": [
-		"Other"
+		"Themes"
 	],
 	"activationEvents": [
 		"onCommand:themeFavorites.addFavorite",
@@ -16,7 +16,7 @@
 		"onCommand:themeFavorites.openTheme",
 		"onCommand:themeFavorites.toggleFavorite",
 		"onCommand:themeFavorites.refresh",
-		"onView:theme-favorites-themes",
+		"onView:theme-favorites-webview",
 		"onView:theme-favorites-favorites"
 	],
 	"main": "./out/extension.js",
@@ -32,8 +32,8 @@
 		},
 		"views": {
 			"theme-favorites": [
-				{ "id": "theme-favorites-favorites", "name": "Favorites" },
-				{ "id": "theme-favorites-themes", "name": "All Themes" }
+				{ "id": "theme-favorites-favorites", "name": "Favorites", "type": "webview" },
+				{ "id": "theme-favorites-webview", "name": "Browse Themes", "type": "webview" }
 			]
 		},
 		"commands": [
@@ -46,13 +46,13 @@
 		],
 		"menus": {
 			"view/title": [
-				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-themes", "group": "navigation" },
+				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-webview", "group": "navigation" },
 				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-favorites", "group": "navigation" }
 			],
 			"view/item/context": [
-				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-themes", "group": "navigation" },
-				{ "command": "themeFavorites.addFavorite", "when": "view == theme-favorites-themes && viewItem == notFavorited", "group": "inline" },
-				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-themes && viewItem == favorited", "group": "inline" },
+				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-webview", "group": "navigation" },
+				{ "command": "themeFavorites.addFavorite", "when": "view == theme-favorites-webview && viewItem == notFavorited", "group": "inline" },
+				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-webview && viewItem == favorited", "group": "inline" },
 				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-favorites", "group": "navigation" },
 				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-favorites && viewItem == favoriteItem", "group": "inline" }
 			]

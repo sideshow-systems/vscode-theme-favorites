@@ -124,4 +124,58 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 
 		return [];
 	  }
+
+	/**
+	 * Liefert eine flache Liste aller Themes (ohne Gruppierung).
+	 * Wird z.B. von QuickPick‑Befehlen genutzt.
+	 */
+	async getAllThemes(): Promise<Array<{ label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string }>> {
+		const set = new Map<string, { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string }>();
+		for (const ext of vscode.extensions.all) {
+			const contributes = ext.packageJSON && ext.packageJSON.contributes;
+			const themes = contributes && contributes.themes;
+			if (!themes) continue;
+			for (const t of themes) {
+				const label = typeof t === 'string' ? t : (t.label ?? t.id ?? t.path);
+				const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
+				if (!label) continue;
+				if (!set.has(label)) {
+					const entry: { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string } = { label, uiTheme, extDisplay: ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name), extId: ext.id };
+					// Try to resolve a color swatch from the theme file (if path is provided)
+					try {
+						const themePath = typeof t === 'object' && (t.path || t.file) ? path.join(ext.extensionPath, (t.path || t.file)) : undefined;
+						if (themePath) {
+							const uri = vscode.Uri.file(themePath);
+							const bytes = await vscode.workspace.fs.readFile(uri);
+							const raw = Buffer.from(bytes).toString('utf8');
+							let parsed: any = undefined;
+							if (raw && raw.trim().startsWith('{')) {
+								try { parsed = JSON.parse(raw); } catch (e) { parsed = undefined; }
+							}
+							if (parsed && parsed.colors && typeof parsed.colors === 'object') {
+								const colors = parsed.colors as { [k: string]: string };
+								const prefer = ['editor.background', 'editor.foreground', 'activityBar.background', 'sideBar.background', 'editorWidget.background'];
+								let found: string | undefined;
+								for (const key of prefer) {
+									if (colors[key] && typeof colors[key] === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})/i.test(colors[key])) { found = colors[key]; break; }
+								}
+								if (!found) {
+									for (const v of Object.values(colors)) {
+										if (typeof v === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})/i.test(v)) { found = v; break; }
+									}
+								}
+								if (found) {
+									entry.swatch = found;
+								}
+							}
+						}
+					} catch (e) {
+						// ignore read/parse errors — swatch stays undefined
+					}
+					set.set(label, entry);
+				}
+			}
+		}
+		return Array.from(set.values()).sort((a, b) => a.label.localeCompare(b.label));
+	}
 }
