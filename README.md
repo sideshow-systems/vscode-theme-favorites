@@ -2,6 +2,8 @@
 
 Quickly manage and switch between your favorite VS Code themes. This extension allows you to mark installed themes as favorites and switch between them with a single click or command.
 
+![Preview](images/banner.png)
+
 ## Features
 
 - **Add/Remove Favorites**: Mark your preferred themes as favorites using the Command Palette
