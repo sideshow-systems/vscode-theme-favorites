@@ -6,7 +6,7 @@
 		"type": "git",
 		"url": "https://github.com/sideshow-systems/vscode-theme-favorites"
 	},
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"engines": {
 		"vscode": "^1.60.0"
 	},

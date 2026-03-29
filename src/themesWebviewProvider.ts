@@ -167,7 +167,8 @@ body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foregr
 .themeItem .label { font-size:0.95em; }
 .themeItem .meta { font-size:0.8em; color:var(--vscode-editorHint-foreground); }
 .btn { background:transparent; border:none; color:var(--vscode-editor-foreground); cursor:pointer; }
-.btn.star { color: var(--vscode-button-foreground); }
+.btn.star { color: var(--vscode-terminal-ansiYellow); font-weight: 700; background: var(--vscode-input-background); border-radius: 4px; padding: 0 6px; border: 1px solid var(--vscode-editorWidget-border); box-shadow: inset 0 0 0 1px var(--vscode-input-border); }
+.btn.star:hover { background: var(--vscode-inputHoverBackground); }
 </style>
 </head>
 <body>
@@ -204,10 +205,7 @@ function normalizeName(s) {
 function isSameTheme(a, b) {
 	const na = normalizeName(a);
 	const nb = normalizeName(b);
-	if (!na || !nb) return false;
-	if (na === nb) return true;
-	if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
-	return false;
+	return na && nb && na === nb;
 }
 
 function setActive(name) { activeTheme = name || ''; render(); }

@@ -103,7 +103,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 <title></title>
 <style>
 body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); padding: 8px; }
-.themeItem.active { outline: 2px solid var(--vscode-focusBorder); }
+.themeItem:hover { background: var(--vscode-list-hoverBackground); }
+.themeItem.active { outline: 2px solid var(--vscode-focusBorder); background: var(--vscode-list-activeSelectionBackground); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
 #content { background-color: rgba(255,255,255,0.03); padding:8px; border-radius:6px; }
 .group h3 { font-weight: 600; font-size: 1.05em; margin-bottom:6px; }
 .themeItem { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:4px; margin:2px 0; cursor:pointer; }
@@ -142,10 +143,7 @@ function normalizeName(s) {
 function isSameTheme(a, b) {
     const na = normalizeName(a);
     const nb = normalizeName(b);
-    if (!na || !nb) return false;
-    if (na === nb) return true;
-    if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
-    return false;
+    return na && nb && na === nb;
 }
 
 function groupThemes(list) {
