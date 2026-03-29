@@ -112,6 +112,29 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	/**
 	 * Sendet die initialen Daten (Themes, Favoriten, aktives Theme) an das Webview.
 	 */
+	private getWebviewStrings() {
+		const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
+		const map = {
+			'en': {
+				searchPlaceholder: 'Search themes...',
+				refreshButton: 'Refresh',
+				groupDark: 'Dark',
+				groupLight: 'Light',
+				groupOther: 'Other',
+				pageTitle: 'Themes'
+			},
+			'de': {
+				searchPlaceholder: 'Themes suchen...',
+				refreshButton: 'Aktualisieren',
+				groupDark: 'Dunkel',
+				groupLight: 'Hell',
+				groupOther: 'Andere',
+				pageTitle: 'Themes durchsuchen'
+			}
+		};
+		return map[locale];
+	}
+
 	private async _sendInit() {
 		if (!this._view) return;
 		const themes = await this._themesProvider.getAllThemes();
@@ -122,14 +145,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 			themes,
 			favorites,
 			activeTheme: active,
-			strings: {
-				searchPlaceholder: 'Search themes...',
-				refreshButton: 'Refresh',
-				groupDark: 'Dark',
-				groupLight: 'Light',
-				groupOther: 'Other',
-				pageTitle: 'Themes'
-			}
+			strings: this.getWebviewStrings()
 		});
 	}
 

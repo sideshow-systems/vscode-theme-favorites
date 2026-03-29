@@ -70,6 +70,27 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
         await this._sendInit();
     }
 
+    private getWebviewStrings() {
+        const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
+        const map = {
+            'en': {
+                groupDark: 'Dark',
+                groupLight: 'Light',
+                groupOther: 'Other',
+                removeButton: 'Remove',
+                pageTitle: 'Favorites'
+            },
+            'de': {
+                groupDark: 'Dunkel',
+                groupLight: 'Hell',
+                groupOther: 'Andere',
+                removeButton: 'Entfernen',
+                pageTitle: 'Theme Favoriten'
+            }
+        };
+        return map[locale];
+    }
+
     private async _sendInit() {
         if (!this._view) return;
         const all = await this._themesProvider.getAllThemes();
@@ -81,13 +102,7 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
             themes: favItems,
             favorites,
             activeTheme: active,
-            strings: {
-                groupDark: 'Dark',
-                groupLight: 'Light',
-                groupOther: 'Other',
-                removeButton: 'Remove',
-                pageTitle: 'Favorites'
-            }
+            strings: this.getWebviewStrings()
         });
     }
 
