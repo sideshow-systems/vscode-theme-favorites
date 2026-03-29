@@ -20,11 +20,7 @@ function normalizeThemeName(name: string): string {
 function isSameTheme(a: string, b: string): boolean {
 	const na = normalizeThemeName(a);
 	const nb = normalizeThemeName(b);
-	if (!na || !nb) return false;
-	if (na === nb) return true;
-	// fallback: one contains the other (avoid very short matches)
-	if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
-	return false;
+	return na === nb;
 }
 
 /**
