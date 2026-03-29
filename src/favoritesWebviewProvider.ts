@@ -29,7 +29,7 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                                 await vscode.workspace.getConfiguration('workbench').update('colorTheme', msg.name, vscode.ConfigurationTarget.Global);
                                 await this._sendInit();
                                 this._themesProvider.refresh();
-                                vscode.window.showInformationMessage(`Theme gewechselt: ${msg.name}`);
+                                vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
                             }
                             break;
                         case 'removeFavorite':
@@ -59,7 +59,10 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
             await this._sendInit();
         } catch (err) {
             this._out?.appendLine(`Favorites webview init error: ${err}`);
-            try { webviewView.webview.html = `<div style="padding:12px;">Fehler beim Laden der Favoriten: ${String(err)}</div>`; } catch (e) { }
+            try {
+                const errorMsg = `Error loading favorites: ${String(err)}`;
+                webviewView.webview.html = `<div style="padding:12px;">${errorMsg}</div>`;
+            } catch (e) { }
         }
     }
 
@@ -73,7 +76,19 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
         const favorites = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
         const favItems = all.filter(t => favorites.includes(t.label));
         const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-        this._view.webview.postMessage({ command: 'init', themes: favItems, favorites, activeTheme: active });
+        this._view.webview.postMessage({
+            command: 'init',
+            themes: favItems,
+            favorites,
+            activeTheme: active,
+            strings: {
+                groupDark: 'Dark',
+                groupLight: 'Light',
+                groupOther: 'Other',
+                removeButton: 'Remove',
+                pageTitle: 'Favorites'
+            }
+        });
     }
 
     private _getHtml(webview: vscode.Webview): string {
@@ -85,6 +100,7 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; img-src ${cspSource} data:; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title></title>
 <style>
 body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); padding: 8px; }
 .themeItem.active { outline: 2px solid var(--vscode-focusBorder); }
@@ -106,6 +122,13 @@ const vscode = acquireVsCodeApi();
 let themes = [];
 let favorites = [];
 let activeTheme = '';
+let strings = {
+    groupDark: 'Dark',
+    groupLight: 'Light',
+    groupOther: 'Other',
+    removeButton: 'Remove',
+    pageTitle: 'Favorites'
+};
 
 function normalizeName(s) {
     if (!s) return '';
@@ -141,7 +164,9 @@ function render() {
  for (const key of ['dark','light','unknown']) {
     const arr = groups[key]; if (!arr || arr.length === 0) continue;
     const groupEl = document.createElement('div'); groupEl.className = 'group';
-    const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark' : (key === 'light' ? 'Light' : 'Other'); groupEl.appendChild(title);
+    const title = document.createElement('h3');
+    title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
+    groupEl.appendChild(title);
     for (const t of arr) {
         const active = isSameTheme(t.label, activeTheme);
         const item = document.createElement('div'); item.className = 'themeItem' + (active ? ' active' : '');
@@ -150,7 +175,7 @@ function render() {
         const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = t.extDisplay || t.extId || '';
         left.appendChild(lbl); left.appendChild(meta);
         const right = document.createElement('div');
-        const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = 'Remove';
+        const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = strings.removeButton;
         btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
         item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
         right.appendChild(btn);
@@ -161,10 +186,21 @@ function render() {
  }
 }
 
+function updateUI() {
+	document.title = strings.pageTitle;
+}
+
 window.addEventListener('message', event => {
  const msg = event.data;
  switch (msg.command) {
-  case 'init': themes = msg.themes || []; favorites = msg.favorites || []; activeTheme = msg.activeTheme || ''; render(); break;
+  case 'init':
+      themes = msg.themes || [];
+      favorites = msg.favorites || [];
+      activeTheme = msg.activeTheme || '';
+      strings = msg.strings || strings;
+      updateUI();
+      render();
+      break;
   case 'favoritesUpdated': favorites = msg.favorites || []; render(); break;
  }
 });

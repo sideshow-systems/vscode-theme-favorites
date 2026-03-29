@@ -1,6 +1,6 @@
 {
 	"name": "vscode-theme-favorites",
-	"displayName": "Theme Favorites",
+	"displayName": "%displayName%",
 	"publisher": "sideshow-systems",
 	"repository": {
 		"type": "git",
@@ -13,6 +13,8 @@
 	"categories": [
 		"Themes"
 	],
+	"icon": "images/icon.png",
+	"description": "%description%",
 	"activationEvents": [
 		"onCommand:themeFavorites.addFavorite",
 		"onCommand:themeFavorites.removeFavorite",
@@ -29,24 +31,24 @@
 			"activitybar": [
 				{
 					"id": "theme-favorites",
-					"title": "Theme Favorites",
+					"title": "%viewsContainers.title%",
 					"icon": "resources/icon.svg"
 				}
 			]
 		},
 		"views": {
 			"theme-favorites": [
-				{ "id": "theme-favorites-favorites", "name": "Favorites", "type": "webview" },
-				{ "id": "theme-favorites-webview", "name": "Browse Themes", "type": "webview" }
+				{ "id": "theme-favorites-favorites", "name": "%views.favorites.name%", "type": "webview" },
+				{ "id": "theme-favorites-webview", "name": "%views.browse.name%", "type": "webview" }
 			]
 		},
 		"commands": [
-			{ "command": "themeFavorites.addFavorite", "title": "Theme Favorites: Add Favorite" },
-			{ "command": "themeFavorites.removeFavorite", "title": "Theme Favorites: Remove Favorite" },
-			{ "command": "themeFavorites.chooseFavorite", "title": "Theme Favorites: Choose Favorite" },
-			{ "command": "themeFavorites.openTheme", "title": "Theme Favorites: Apply Theme" },
-			{ "command": "themeFavorites.toggleFavorite", "title": "Theme Favorites: Toggle Favorite" },
-			{ "command": "themeFavorites.refresh", "title": "Theme Favorites: Refresh View" }
+			{ "command": "themeFavorites.addFavorite", "title": "%commands.addFavorite.title%" },
+			{ "command": "themeFavorites.removeFavorite", "title": "%commands.removeFavorite.title%" },
+			{ "command": "themeFavorites.chooseFavorite", "title": "%commands.chooseFavorite.title%" },
+			{ "command": "themeFavorites.openTheme", "title": "%commands.openTheme.title%" },
+			{ "command": "themeFavorites.toggleFavorite", "title": "%commands.toggleFavorite.title%" },
+			{ "command": "themeFavorites.refresh", "title": "%commands.refresh.title%" }
 		],
 		"menus": {
 			"view/title": [

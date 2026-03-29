@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			const favs = context.globalState.get<string[]>(FAVORITES_KEY, []);
-			if (!favs || favs.length === 0) { vscode.window.showInformationMessage('Keine Favoriten vorhanden'); return; }
+			if (!favs || favs.length === 0) { vscode.window.showInformationMessage('No favorites available'); return; }
 			const pick = await vscode.window.showQuickPick(favs, { placeHolder: 'Favorit entfernen' });
 			if (!pick) return;
 			await removeFavorite(context, pick, favoritesWebview, themesProvider);
@@ -85,13 +85,13 @@ export function activate(context: vscode.ExtensionContext) {
 			await vscode.workspace.getConfiguration('workbench').update('colorTheme', name, vscode.ConfigurationTarget.Global);
 			await favoritesWebview.refresh();
 			themesWebview.refresh();
-			vscode.window.showInformationMessage(`Theme gewechselt: ${name}`);
+			vscode.window.showInformationMessage(`Theme changed: ${name}`);
 		}),
 
 		vscode.commands.registerCommand('themeFavorites.refresh', async () => {
 			await favoritesWebview.refresh();
 			themesWebview.refresh();
-			vscode.window.showInformationMessage('Theme Favorites aktualisiert');
+			vscode.window.showInformationMessage('Theme Favorites refreshed');
 		})
 	);
 
@@ -116,9 +116,9 @@ async function addFavorite(context: vscode.ExtensionContext, name: string, favor
 		await context.globalState.update(FAVORITES_KEY, favs);
 		try { await favoritesWebview.refresh(); } catch (e) { /* ignore */ }
 		themesProvider.refresh();
-		vscode.window.showInformationMessage(`Favorit hinzugefügt: ${name}`);
+		vscode.window.showInformationMessage(`Favorite added: ${name}`);
 	} else {
-		vscode.window.showInformationMessage(`${name} ist bereits Favorit`);
+		vscode.window.showInformationMessage(`${name} is already a favorite`);
 	}
 }
 
@@ -135,7 +135,7 @@ async function removeFavorite(context: vscode.ExtensionContext, name: string, fa
 	} catch (e) {
 		try { themesProvider.refresh(); } catch (_) { /* ignore */ }
 	}
-	vscode.window.showInformationMessage(`Favorit entfernt: ${name}`);
+	vscode.window.showInformationMessage(`Favorite removed: ${name}`);
 }
 
 export function deactivate() { }
