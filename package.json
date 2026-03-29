@@ -13,6 +13,8 @@
 	"categories": [
 		"Themes"
 	],
+	"icon": "images/icon.png",
+	"description": "Easily save and manage your favorite VS Code themes.",
 	"activationEvents": [
 		"onCommand:themeFavorites.addFavorite",
 		"onCommand:themeFavorites.removeFavorite",
