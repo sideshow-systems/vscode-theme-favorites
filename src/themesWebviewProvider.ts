@@ -120,7 +120,8 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 				groupLight: 'Light',
 				groupOther: 'Other',
 				pageTitle: 'Themes',
-				noThemesFound: 'No themes found'
+				noThemesFound: 'No themes found',
+				toggleColorsLabel: 'Colors'
 			},
 			'de': {
 				searchPlaceholder: 'Themes suchen...',
@@ -131,7 +132,8 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 				groupLight: 'Hell',
 				groupOther: 'Andere',
 				pageTitle: 'Themes durchsuchen',
-				noThemesFound: 'Keine Themes gefunden'
+				noThemesFound: 'Keine Themes gefunden',
+				toggleColorsLabel: 'Farben'
 			}
 		};
 		return map[locale];
@@ -188,17 +190,21 @@ body {
   padding: 8px;
   border-bottom: 1px solid var(--vscode-editorWidget-border);
   z-index: 100;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 #search { 
-  width: 100%;
+  flex: 1;
+  min-width: 150px;
   padding: 6px 8px; 
   border-radius: 4px; 
   border: 1px solid var(--vscode-editorWidget-border); 
   background: var(--vscode-input-background); 
   color: var(--vscode-input-foreground); 
   font-family: var(--vscode-font-family);
-  margin-bottom: 8px;
 }
 
 #search::placeholder {
@@ -208,7 +214,7 @@ body {
 .filters {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .filter-btn {
@@ -220,6 +226,7 @@ body {
   cursor: pointer;
   font-size: 0.85em;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .filter-btn:hover {
@@ -230,6 +237,31 @@ body {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border-color: var(--vscode-button-background);
+}
+
+#toggleSwatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.85em;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+#toggleSwatches:hover {
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-editorWidget-border);
+}
+
+.swatch-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 #content { 
@@ -307,6 +339,28 @@ body {
   flex-shrink: 0;
 }
 
+.theme-swatch {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  height: 24px;
+  aspect-ratio: 5 / 1;
+  min-width: 90px;
+}
+
+.theme-swatch.hidden {
+  display: none;
+}
+
+.theme-swatch-color {
+  background: #1e1e1e;
+  border-radius: 2px;
+}
+
 .btn { 
   background: transparent; 
   border: none; 
@@ -338,6 +392,10 @@ body {
 <div id="header">
   <input id="search" type="text" />
   <div class="filters" id="filters"></div>
+  <label id="toggleSwatches">
+    <input type="checkbox" class="swatch-checkbox" id="swatchToggle" />
+    <span id="toggleSwatchesLabel">Colors</span>
+  </label>
 </div>
 <div id="content">
   <div id="groups"></div>
@@ -348,6 +406,8 @@ let themes = [];
 let favorites = [];
 let activeTheme = '';
 let currentFilter = 'all';
+let showSwatches = false;
+let themeMap = {}; // Map to store full theme objects for preview
 let strings = {
 	searchPlaceholder: 'Search themes...',
 	filterAll: 'All',
@@ -378,11 +438,26 @@ function isSameTheme(a, b) {
 function setActive(name) { activeTheme = name || ''; render(); }
 function updateFavorites(list) { favorites = list || []; render(); }
 
+function categorizeTheme(t) {
+	if (!t || typeof t !== 'object') return 'unknown';
+	const ui = (t.uiTheme || '').toLowerCase();
+	const label = (t.label || '').toLowerCase();
+	
+	// Check uiTheme first
+	if (ui.includes('dark')) return 'dark';
+	if (ui.includes('vs') || ui.includes('light')) return 'light';
+	
+	// Fallback: check theme name for known dark variants (Catppuccin, etc.)
+	if (label && (label.includes('dark') || label.includes('frappe') || label.includes('mocha'))) return 'dark';
+	if (label && (label.includes('light') || label.includes('latte'))) return 'light';
+	
+	return 'unknown';
+}
+
 function groupThemes(list) {
 	const groups = { dark: [], light: [], unknown: [] };
 	for (const t of list) {
-		const ui = (t.uiTheme || '').toLowerCase();
-		const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+		const kind = categorizeTheme(t);
 		groups[kind].push(t);
 	}
 	return groups;
@@ -390,67 +465,107 @@ function groupThemes(list) {
 
 function filterThemesByType(list, type) {
 	if (type === 'all') return list;
-	
-	// Nutze die gleiche Logik wie groupThemes, um Themes zu kategorisieren
 	return list.filter(t => {
-		const ui = (t.uiTheme || '').toLowerCase();
-		const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+		const kind = categorizeTheme(t);
 		return kind === type;
 	});
 }
 
 function render() {
-	const q = document.getElementById('search').value.trim().toLowerCase();
-	let filtered = themes.filter(t => !q || t.label.toLowerCase().includes(q));
-	filtered = filterThemesByType(filtered, currentFilter);
-	
-	if (filtered.length === 0) {
-	  document.getElementById('groups').innerHTML = '<div id="noItems">' + strings.noThemesFound + '</div>';
-	  return;
-	}
-
-	const container = document.getElementById('groups');
-	container.innerHTML = '';
-	const groups = groupThemes(filtered);
-	for (const key of ['dark','light','unknown']) {
-		const arr = groups[key];
-		if (!arr || arr.length === 0) continue;
-		const groupEl = document.createElement('div');
-		groupEl.className = 'group';
-		const title = document.createElement('h3');
-		title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
-		groupEl.appendChild(title);
+	try {
+		const q = document.getElementById('search').value.trim().toLowerCase();
+		let filtered = themes.filter(t => !q || (t && t.label && t.label.toLowerCase().includes(q)));
+		filtered = filterThemesByType(filtered, currentFilter);
 		
-		const itemsContainer = document.createElement('div');
-		itemsContainer.className = 'groupItems';
-		
-		for (const t of arr) {
-			const active = isSameTheme(t.label, activeTheme);
-			const item = document.createElement('div');
-			item.className = 'themeItem' + (active ? ' active' : '');
-			const left = document.createElement('div');
-			left.className = 'left';
-			const lbl = document.createElement('div');
-			lbl.className = 'label';
-			lbl.textContent = t.label;
-			const meta = document.createElement('div');
-			meta.className = 'meta';
-			meta.textContent = t.extDisplay || t.extId || '';
-			left.appendChild(lbl);
-			left.appendChild(meta);
-			const right = document.createElement('div');
-			const star = document.createElement('button');
-			star.className = 'btn star';
-			star.innerText = favorites.includes(t.label) ? '★' : '☆';
-			star.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'toggleFavorite', name: t.label }); };
-			item.onclick = () => { vscode.postMessage({ command: 'applyTheme', name: t.label }); };
-			right.appendChild(star);
-			item.appendChild(left);
-			item.appendChild(right);
-			itemsContainer.appendChild(item);
+		if (!filtered || filtered.length === 0) {
+		  document.getElementById('groups').innerHTML = '<div id="noItems">' + strings.noThemesFound + '</div>';
+		  return;
 		}
-		groupEl.appendChild(itemsContainer);
-		container.appendChild(groupEl);
+
+		const container = document.getElementById('groups');
+		container.innerHTML = '';
+		const groups = groupThemes(filtered);
+		for (const key of ['dark','light','unknown']) {
+			const arr = groups[key];
+			if (!arr || arr.length === 0) continue;
+			const groupEl = document.createElement('div');
+			groupEl.className = 'group';
+			const title = document.createElement('h3');
+			title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
+			groupEl.appendChild(title);
+			
+			const itemsContainer = document.createElement('div');
+			itemsContainer.className = 'groupItems';
+			
+			for (const t of arr) {
+				if (!t || !t.label) continue;
+				const active = isSameTheme(t.label, activeTheme);
+				const item = document.createElement('div');
+				item.className = 'themeItem' + (active ? ' active' : '');
+				const left = document.createElement('div');
+				left.className = 'left';
+				
+				// Create color swatch with 5 dominant theme colors
+				const swatch = document.createElement('div');
+				swatch.className = 'theme-swatch';
+				if (!showSwatches) swatch.classList.add('hidden');
+				const colors = t.colors || {};
+				
+				// Set fallback based on theme type
+				let bgFallback = '#1e1e1e';
+				let fgFallback = '#d4d4d4';
+				const ui = (t.uiTheme || '').toLowerCase();
+				if (ui.includes('vs') || ui.includes('light')) {
+					bgFallback = '#ffffff';
+					fgFallback = '#333333';
+				}
+				
+				// Select 5 important colors in priority order
+				const paletteKeys = [
+					'editor.background',
+					'editor.foreground',
+					'button.background',
+					'terminal.ansiRed',
+					'activityBar.background'
+				];
+				
+				const paletteFallbacks = [bgFallback, fgFallback, '#0e639c', '#f48771', '#333333'];
+				
+				for (let i = 0; i < 5; i++) {
+					const colorValue = colors[paletteKeys[i]] || paletteFallbacks[i];
+					const colorDiv = document.createElement('div');
+					colorDiv.className = 'theme-swatch-color';
+					colorDiv.style.backgroundColor = colorValue;
+					colorDiv.title = paletteKeys[i];
+					swatch.appendChild(colorDiv);
+				}
+				
+				left.appendChild(swatch);
+				
+				const lbl = document.createElement('div');
+				lbl.className = 'label';
+				lbl.textContent = t.label;
+				const meta = document.createElement('div');
+				meta.className = 'meta';
+				meta.textContent = t.extDisplay || t.extId || '';
+				left.appendChild(lbl);
+				left.appendChild(meta);
+				const right = document.createElement('div');
+				const star = document.createElement('button');
+				star.className = 'btn star';
+				star.innerText = favorites.includes(t.label) ? '★' : '☆';
+				star.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'toggleFavorite', name: t.label }); };
+				item.onclick = () => { vscode.postMessage({ command: 'applyTheme', name: t.label }); };
+				right.appendChild(star);
+				item.appendChild(left);
+				item.appendChild(right);
+				itemsContainer.appendChild(item);
+			}
+			groupEl.appendChild(itemsContainer);
+			container.appendChild(groupEl);
+		}
+	} catch (e) {
+		document.getElementById('groups').innerHTML = '<div id="noItems">Error rendering themes: ' + String(e) + '</div>';
 	}
 }
 
@@ -478,6 +593,7 @@ function updateFilterButtons() {
 
 function updateUI() {
 	document.getElementById('search').placeholder = strings.searchPlaceholder;
+	document.getElementById('toggleSwatchesLabel').textContent = strings.toggleColorsLabel;
 	document.title = strings.pageTitle;
 	updateFilterButtons();
 }
@@ -499,6 +615,25 @@ window.addEventListener('message', event => {
 });
 
 document.getElementById('search').addEventListener('input', () => render());
+
+document.getElementById('swatchToggle').addEventListener('change', (e) => {
+	showSwatches = e.target.checked;
+	const swatches = document.querySelectorAll('.theme-swatch');
+	swatches.forEach(swatch => {
+		if (showSwatches) {
+			swatch.classList.remove('hidden');
+		} else {
+			swatch.classList.add('hidden');
+		}
+	});
+});
+
+document.getElementById('preview-modal').addEventListener('click', (e) => {
+	if (e.target.id === 'preview-modal') closePreview();
+});
+document.addEventListener('keydown', (e) => {
+	if (e.key === 'Escape') closePreview();
+});
 
 vscode.postMessage({ command: 'initRequest' });
 </script>

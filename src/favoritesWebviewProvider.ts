@@ -79,7 +79,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                 groupOther: 'Other',
                 removeButton: 'Remove',
                 pageTitle: 'Favorites',
-                noFavorites: 'No favorites yet. Add themes from the Browse view.'
+                noFavorites: 'No favorites yet. Add themes from the Browse view.',
+                toggleColorsLabel: 'Colors'
             },
             'de': {
                 searchPlaceholder: 'Favoriten filtern...',
@@ -88,7 +89,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                 groupOther: 'Andere',
                 removeButton: 'Entfernen',
                 pageTitle: 'Theme Favoriten',
-                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.'
+                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
+                toggleColorsLabel: 'Farben'
             }
         };
         return map[locale];
@@ -136,10 +138,13 @@ body {
   padding: 8px;
   border-bottom: 1px solid var(--vscode-editorWidget-border);
   z-index: 100;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 #search { 
-  width: 100%;
+  flex: 1;
   padding: 6px 8px; 
   border-radius: 4px; 
   border: 1px solid var(--vscode-editorWidget-border); 
@@ -150,6 +155,31 @@ body {
 
 #search::placeholder {
   color: var(--vscode-input-placeholderForeground);
+}
+
+#toggleSwatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.85em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#toggleSwatches:hover {
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-editorWidget-border);
+}
+
+.swatch-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 #content { 
@@ -226,6 +256,28 @@ body {
   flex-shrink: 0;
 }
 
+.theme-swatch {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  height: 24px;
+  aspect-ratio: 5 / 1;
+  min-width: 90px;
+}
+
+.theme-swatch-color {
+  background: #1e1e1e;
+  border-radius: 2px;
+}
+
+.theme-swatch.hidden {
+  display: none;
+}
+
 .btn { 
   background: transparent; 
   border: none; 
@@ -251,6 +303,10 @@ body {
 <body>
 <div id="header">
   <input id="search" type="text" />
+  <label id="toggleSwatches">
+    <input type="checkbox" class="swatch-checkbox" id="swatchToggle" />
+    <span id="toggleSwatchesLabel">Colors</span>
+  </label>
 </div>
 <div id="content">
   <div id="groups"></div>
@@ -260,6 +316,7 @@ const vscode = acquireVsCodeApi();
 let themes = [];
 let favorites = [];
 let activeTheme = '';
+let showSwatches = false;
 let strings = {
     searchPlaceholder: 'Filter favorites...',
     groupDark: 'Dark',
@@ -285,11 +342,25 @@ function isSameTheme(a, b) {
     return na && nb && na === nb;
 }
 
+function categorizeTheme(t) {
+    const ui = (t.uiTheme || '').toLowerCase();
+    const label = (t.label || '').toLowerCase();
+    
+    // Check uiTheme first
+    if (ui.includes('dark')) return 'dark';
+    if (ui.includes('vs') || ui.includes('light')) return 'light';
+    
+    // Fallback: check theme name for known dark variants (Catppuccin, etc.)
+    if (label.includes('dark') || label.includes('frappe') || label.includes('mocha')) return 'dark';
+    if (label.includes('light') || label.includes('latte')) return 'light';
+    
+    return 'unknown';
+}
+
 function groupThemes(list) {
  const groups = { dark: [], light: [], unknown: [] };
  for (const t of list) {
-    const ui = (t.uiTheme || '').toLowerCase();
-    const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+    const kind = categorizeTheme(t);
     groups[kind].push(t);
  }
  return groups;
@@ -325,6 +396,43 @@ function render() {
         item.className = 'themeItem' + (active ? ' active' : '');
         const left = document.createElement('div'); 
         left.className = 'left';
+        
+        // Create color swatch with 5 dominant theme colors
+        const swatch = document.createElement('div');
+        swatch.className = 'theme-swatch' + (showSwatches ? '' : ' hidden');
+        const colors = t.colors || {};
+        
+        // Set fallback based on theme type
+        let bgFallback = '#1e1e1e';
+        let fgFallback = '#d4d4d4';
+        const ui = (t.uiTheme || '').toLowerCase();
+        if (ui.includes('vs') || ui.includes('light')) {
+            bgFallback = '#ffffff';
+            fgFallback = '#333333';
+        }
+        
+        // Select 5 important colors in priority order
+        const paletteKeys = [
+            'editor.background',
+            'editor.foreground',
+            'button.background',
+            'terminal.ansiRed',
+            'activityBar.background'
+        ];
+        
+        const paletteFallbacks = [bgFallback, fgFallback, '#0e639c', '#f48771', '#333333'];
+        
+        for (let i = 0; i < 5; i++) {
+            const colorValue = colors[paletteKeys[i]] || paletteFallbacks[i];
+            const colorDiv = document.createElement('div');
+            colorDiv.className = 'theme-swatch-color';
+            colorDiv.style.backgroundColor = colorValue;
+            colorDiv.title = paletteKeys[i];
+            swatch.appendChild(colorDiv);
+        }
+        
+        left.appendChild(swatch);
+        
         const lbl = document.createElement('div'); 
         lbl.className = 'label'; 
         lbl.textContent = t.label;
@@ -351,6 +459,7 @@ function render() {
 
 function updateUI() {
 	document.getElementById('search').placeholder = strings.searchPlaceholder;
+	document.getElementById('toggleSwatchesLabel').textContent = strings.toggleColorsLabel;
 	document.title = strings.pageTitle;
 }
 
@@ -373,6 +482,19 @@ window.addEventListener('message', event => {
 });
 
 document.getElementById('search').addEventListener('input', () => render());
+
+document.getElementById('swatchToggle').addEventListener('change', (e) => {
+	showSwatches = e.target.checked;
+	const swatches = document.querySelectorAll('.theme-swatch');
+	swatches.forEach(swatch => {
+		if (showSwatches) {
+			swatch.classList.remove('hidden');
+		} else {
+			swatch.classList.add('hidden');
+		}
+	});
+});
+
 vscode.postMessage({ command: 'initRequest' });
 </script>
 </body>

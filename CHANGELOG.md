@@ -8,6 +8,7 @@ The format is based on "Keep a Changelog" and uses SemVer.
 
 ### Added
 - Add better search and filter stuff in all views (#2)
+- Add color fields to get a better look about the color theme
 
 ## [1.2.0] - 2026-03-30
 
