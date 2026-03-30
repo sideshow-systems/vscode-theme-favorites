@@ -4,6 +4,11 @@ All notable changes to this extension are documented in this file.
 
 The format is based on "Keep a Changelog" and uses SemVer.
 
+## [1.2.0] - 2026-03-30
+
+### Added
+- Add sync of theme favorites via settings sync
+
 ## [1.1.0] - 2026-03-30
 
 ### Added
