@@ -4,7 +4,7 @@ All notable changes to this extension are documented in this file.
 
 The format is based on "Keep a Changelog" and uses SemVer.
 
-## [UNRELEASED]
+## [1.3.0] - 2026-03-30
 
 ### Added
 - Add better search and filter stuff in all views (#2)
