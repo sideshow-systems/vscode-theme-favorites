@@ -84,7 +84,6 @@
 		"watch": "tsc -w -p ./",
 		"postinstall": "node ./node_modules/vscode/bin/install || true",
 		"build-package": "npx vsce package",
-		"git:push2github": "git push -u github main"
 	},
 	"devDependencies": {
 		"@types/node": "^18.0.0",
