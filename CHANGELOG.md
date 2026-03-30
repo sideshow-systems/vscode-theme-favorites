@@ -4,6 +4,11 @@ All notable changes to this extension are documented in this file.
 
 The format is based on "Keep a Changelog" and uses SemVer.
 
+## [UNRELEASED]
+
+### Added
+- Add better search and filter stuff in all views (#2)
+
 ## [1.2.0] - 2026-03-30
 
 ### Added
