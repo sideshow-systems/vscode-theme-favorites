@@ -27,6 +27,20 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "%configuration.title%",
+			"properties": {
+				"themeFavorites.favorites": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [],
+					"description": "%themeFavorites.favorites.description%",
+					"scope": "application"
+				}
+			}
+		},
 		"viewsContainers": {
 			"activitybar": [
 				{

@@ -1,6 +1,8 @@
 {
     "displayName": "Theme Favorites",
     "description": "Easily save and manage your favorite VS Code themes.",
+    "configuration.title": "Theme Favorites",
+    "themeFavorites.favorites.description": "List of favorite themes (synced across devices)",
     "viewsContainers.title": "Theme Favorites",
     "views.favorites.name": "Favorites",
     "views.browse.name": "Browse Themes",

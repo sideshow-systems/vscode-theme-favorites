@@ -1,10 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-
-/**
-	* Schlüssel für die Speicherung der Favoriten in `globalState`.
-	*/
-const FAVORITES_KEY = 'favoriteThemes';
+import { getFavorites } from './favoritesUtils';
 
 function normalizeThemeName(name: string): string {
 	if (!name) return '';
@@ -76,7 +72,7 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 	  }
 
 	  async getChildren(element?: ThemeNode): Promise<ThemeNode[]> {
-		const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+		const favs = getFavorites();
 		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
 
 		// Root: return groups (dark, light, other)
