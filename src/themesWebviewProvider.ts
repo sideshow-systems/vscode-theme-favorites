@@ -1,10 +1,6 @@
 import * as vscode from 'vscode';
 import { ThemesProvider } from './themesProvider';
-
-/**
- * Schlüssel für Favoriten in globalState.
- */
-const FAVORITES_KEY = 'favoriteThemes';
+import { getFavorites, setFavorites } from './favoritesUtils';
 
 /**
  * WebviewViewProvider für die interaktive Theme‑Ansicht.
@@ -52,18 +48,18 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 							break;
 						case 'toggleFavorite':
 							if (!message.name) break;
-							const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
-							if (favs.includes(message.name)) {
-								const newFavs = favs.filter(f => f !== message.name);
-								await this._context.globalState.update(FAVORITES_KEY, newFavs);
-							} else {
-								favs.push(message.name);
-								await this._context.globalState.update(FAVORITES_KEY, favs);
-							}
-							// refresh internal provider state
-							this._themesProvider.refresh();
-							// notify this webview
-							const updatedFavs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+						const favs = getFavorites();
+						if (favs.includes(message.name)) {
+							const newFavs = favs.filter(f => f !== message.name);
+							await setFavorites(newFavs);
+						} else {
+							favs.push(message.name);
+							await setFavorites(favs);
+						}
+						// refresh internal provider state
+						this._themesProvider.refresh();
+						// notify this webview
+						const updatedFavs = getFavorites();
 							webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: updatedFavs });
 							// also notify favorites webview (if available)
 							try {
@@ -138,7 +134,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	private async _sendInit() {
 		if (!this._view) return;
 		const themes = await this._themesProvider.getAllThemes();
-		const favorites = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+		const favorites = getFavorites();
 		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
 		this._view.webview.postMessage({
 			command: 'init',

@@ -1,6 +1,8 @@
 {
     "displayName": "Theme-Favoriten",
     "description": "Einfach Ihre Lieblings-VS-Code-Themes speichern und verwalten.",
+    "configuration.title": "Theme-Favoriten",
+    "themeFavorites.favorites.description": "Liste der Lieblings-Themes (über Geräte synchronisiert)",
     "viewsContainers.title": "Theme-Favoriten",
     "views.favorites.name": "Favoriten",
     "views.browse.name": "Themes durchsuchen",

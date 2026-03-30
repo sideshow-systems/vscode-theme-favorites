@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { ThemesProvider } from './themesProvider';
-
-const FAVORITES_KEY = 'favoriteThemes';
+import { getFavorites, setFavorites } from './favoritesUtils';
 
 export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'theme-favorites-favorites';
@@ -34,9 +33,9 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                             break;
                         case 'removeFavorite':
                             if (!msg.name) break;
-                            const favs = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+                            const favs = getFavorites();
                             const newFavs = favs.filter(f => f !== msg.name);
-                            await this._context.globalState.update(FAVORITES_KEY, newFavs);
+                            await setFavorites(newFavs);
                             await this._sendInit();
                             this._themesProvider.refresh();
                             webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: newFavs });
@@ -94,7 +93,7 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
     private async _sendInit() {
         if (!this._view) return;
         const all = await this._themesProvider.getAllThemes();
-        const favorites = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
+        const favorites = getFavorites();
         const favItems = all.filter(t => favorites.includes(t.label));
         const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
         this._view.webview.postMessage({
