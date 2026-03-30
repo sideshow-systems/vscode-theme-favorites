@@ -307,6 +307,13 @@ body {
   flex-shrink: 0;
 }
 
+.themeItem .right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .btn { 
   background: transparent; 
   border: none; 
@@ -320,10 +327,21 @@ body {
 .btn.star { 
   color: var(--vscode-terminal-ansiYellow); 
   font-weight: 700; 
+  font-size: 1.1em;
+}
+
+.btn.preview-eye {
+  font-size: 0.9em;
+  margin-right: 4px;
 }
 
 .btn:hover {
   background: var(--vscode-list-hoverBackground);
+  opacity: 1;
+}
+
+.btn:active {
+  opacity: 0.8;
 }
 
 #noItems {
@@ -331,6 +349,144 @@ body {
   padding: 16px 8px;
   color: var(--vscode-editorHint-foreground);
   font-size: 0.9em;
+}
+
+.preview-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.preview-modal.show {
+  display: flex;
+}
+
+.preview-content {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 700px;
+  width: 95%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.preview-header {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--vscode-editor-foreground);
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+  padding-bottom: 10px;
+}
+
+.preview-section {
+  margin-bottom: 18px;
+}
+
+.preview-section:last-child {
+  margin-bottom: 0;
+}
+
+.preview-section-title {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--vscode-textLink-foreground);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-code {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 6px;
+  padding: 14px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.preview-colors {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.color-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-box {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.color-box:hover {
+  transform: scale(1.05);
+}
+
+.color-label {
+  font-size: 0.7em;
+  color: var(--vscode-editorHint-foreground);
+  text-align: center;
+  word-break: break-word;
+}
+
+.preview-activity-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.activity-bar-item {
+  width: 32px;
+  height: 64px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+}
+
+.preview-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-editor-foreground);
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px;
 }
 </style>
 </head>
@@ -342,12 +498,35 @@ body {
 <div id="content">
   <div id="groups"></div>
 </div>
+
+<div id="preview-modal" class="preview-modal">
+  <div class="preview-content">
+    <button class="preview-close" onclick="closePreview()">×</button>
+    <div class="preview-header" id="preview-name"></div>
+    
+    <div class="preview-section">
+      <div class="preview-section-title">Code Sample</div>
+      <div class="preview-code" id="preview-code"></div>
+    </div>
+    
+    <div class="preview-section">
+      <div class="preview-section-title">Colors</div>
+      <div class="preview-colors" id="preview-colors"></div>
+    </div>
+    
+    <div class="preview-section">
+      <div class="preview-section-title">Activity Bar</div>
+      <div class="preview-activity-bar" id="preview-activity-bar"></div>
+    </div>
+  </div>
+</div>
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
 let themes = [];
 let favorites = [];
 let activeTheme = '';
 let currentFilter = 'all';
+let themeMap = {}; // Map to store full theme objects for preview
 let strings = {
 	searchPlaceholder: 'Search themes...',
 	filterAll: 'All',
@@ -399,6 +578,85 @@ function filterThemesByType(list, type) {
 	});
 }
 
+function showPreview(themeName) {
+	const theme = themeMap[themeName];
+	if (!theme) return;
+	
+	document.getElementById('preview-name').textContent = themeName;
+	
+	// Render code sample with theme colors
+	const colors = theme.colors || {};
+	const editorBg = colors['editor.background'] || '#1e1e1e';
+	const editorFg = colors['editor.foreground'] || '#d4d4d4';
+	const keyword = colors['keyword.control'] || colors['keyword'] || '#569cd6';
+	const string = colors['string'] || '#ce9178';
+	const comment = colors['comment'] || '#6a9955';
+	
+	const codeSample = \`<span style="color: \${comment}">// Sample code</span>
+<span style="color: \${keyword}">const</span> message = <span style="color: \${string}">"Hello Theme"</span>;
+<span style="color: \${keyword}">return</span> message;\`;
+	
+	const codeDiv = document.getElementById('preview-code');
+	codeDiv.style.backgroundColor = editorBg;
+	codeDiv.style.color = editorFg;
+	codeDiv.innerHTML = codeSample;
+	
+	// Render color palette
+	const importantColors = [
+		{ key: 'editor.background', label: 'Editor' },
+		{ key: 'editor.foreground', label: 'Text' },
+		{ key: 'activityBar.background', label: 'Activity' },
+		{ key: 'button.background', label: 'Button' },
+		{ key: 'terminal.ansiRed', label: 'Red' },
+		{ key: 'terminal.ansiGreen', label: 'Green' },
+		{ key: 'terminal.ansiYellow', label: 'Yellow' },
+		{ key: 'terminal.ansiBlue', label: 'Blue' }
+	];
+	
+	const colorsDiv = document.getElementById('preview-colors');
+	colorsDiv.innerHTML = '';
+	for (const item of importantColors) {
+		const color = colors[item.key];
+		if (color) {
+			const swatchDiv = document.createElement('div');
+			swatchDiv.className = 'color-swatch';
+			
+			const colorBox = document.createElement('div');
+			colorBox.className = 'color-box';
+			colorBox.style.backgroundColor = color;
+			colorBox.title = item.key + ': ' + color;
+			
+			const label = document.createElement('div');
+			label.className = 'color-label';
+			label.textContent = item.label;
+			
+			swatchDiv.appendChild(colorBox);
+			swatchDiv.appendChild(label);
+			colorsDiv.appendChild(swatchDiv);
+		}
+	}
+	
+	// Render activity bar preview
+	const activityBarBg = colors['activityBar.background'] || '#3e3e42';
+	const activityBarFg = colors['activityBar.foreground'] || '#ffffff';
+	
+	const activityDiv = document.getElementById('preview-activity-bar');
+	activityDiv.innerHTML = '';
+	for (let i = 0; i < 3; i++) {
+		const item = document.createElement('div');
+		item.className = 'activity-bar-item';
+		item.style.backgroundColor = activityBarBg;
+		item.style.borderColor = activityBarFg;
+		activityDiv.appendChild(item);
+	}
+	
+	document.getElementById('preview-modal').classList.add('show');
+}
+
+function closePreview() {
+	document.getElementById('preview-modal').classList.remove('show');
+}
+
 function render() {
 	const q = document.getElementById('search').value.trim().toLowerCase();
 	let filtered = themes.filter(t => !q || t.label.toLowerCase().includes(q));
@@ -439,11 +697,18 @@ function render() {
 			left.appendChild(lbl);
 			left.appendChild(meta);
 			const right = document.createElement('div');
+			right.className = 'right';
+			const eye = document.createElement('button');
+			eye.className = 'btn preview-eye';
+			eye.innerText = '👁';
+			eye.title = 'Preview theme';
+			eye.onclick = (e) => { e.stopPropagation(); showPreview(t.label); };
 			const star = document.createElement('button');
 			star.className = 'btn star';
 			star.innerText = favorites.includes(t.label) ? '★' : '☆';
 			star.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'toggleFavorite', name: t.label }); };
 			item.onclick = () => { vscode.postMessage({ command: 'applyTheme', name: t.label }); };
+			right.appendChild(eye);
 			right.appendChild(star);
 			item.appendChild(left);
 			item.appendChild(right);
@@ -490,6 +755,13 @@ window.addEventListener('message', event => {
 	 favorites = msg.favorites || [];
 	 activeTheme = msg.activeTheme || '';
 	 strings = msg.strings || strings;
+	 
+	 // Build theme map for preview
+	 themeMap = {};
+	 for (const t of themes) {
+	 	themeMap[t.label] = t;
+	 }
+	 
 	 updateUI();
 	 render();
 	 break;
@@ -499,6 +771,12 @@ window.addEventListener('message', event => {
 });
 
 document.getElementById('search').addEventListener('input', () => render());
+document.getElementById('preview-modal').addEventListener('click', (e) => {
+	if (e.target.id === 'preview-modal') closePreview();
+});
+document.addEventListener('keydown', (e) => {
+	if (e.key === 'Escape') closePreview();
+});
 
 vscode.postMessage({ command: 'initRequest' });
 </script>

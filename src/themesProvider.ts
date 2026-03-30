@@ -121,8 +121,8 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 	 * Liefert eine flache Liste aller Themes (ohne Gruppierung).
 	 * Wird z.B. von QuickPick‑Befehlen genutzt.
 	 */
-	async getAllThemes(): Promise<Array<{ label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string }>> {
-		const set = new Map<string, { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string }>();
+	async getAllThemes(): Promise<Array<{ label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string; colors?: { [k: string]: string } }>> {
+		const set = new Map<string, { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string; colors?: { [k: string]: string } }>();
 		for (const ext of vscode.extensions.all) {
 			const contributes = ext.packageJSON && ext.packageJSON.contributes;
 			const themes = contributes && contributes.themes;
@@ -132,7 +132,7 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 				const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
 				if (!label) continue;
 				if (!set.has(label)) {
-					const entry: { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string } = { label, uiTheme, extDisplay: ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name), extId: ext.id };
+					const entry: { label: string; uiTheme?: string; extDisplay?: string; extId?: string; swatch?: string; colors?: { [k: string]: string } } = { label, uiTheme, extDisplay: ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name), extId: ext.id };
 					// Try to resolve a color swatch from the theme file (if path is provided)
 					try {
 						const themePath = typeof t === 'object' && (t.path || t.file) ? path.join(ext.extensionPath, (t.path || t.file)) : undefined;
@@ -146,6 +146,39 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 							}
 							if (parsed && parsed.colors && typeof parsed.colors === 'object') {
 								const colors = parsed.colors as { [k: string]: string };
+								
+								// Extrahiere wichtige Farben für Preview
+								const importantKeys = [
+									'editor.background',
+									'editor.foreground',
+									'editorLineNumber.foreground',
+									'editorLineNumber.activeForeground',
+									'editor.selectionBackground',
+									'editorCursor.foreground',
+									'activityBar.background',
+									'activityBar.foreground',
+									'activityBarBadge.background',
+									'sideBar.background',
+									'sideBar.foreground',
+									'button.background',
+									'progressBar.background',
+									'terminal.ansiRed',
+									'terminal.ansiGreen',
+									'terminal.ansiYellow',
+									'terminal.ansiBlue'
+								];
+								
+								const themColors: { [k: string]: string } = {};
+								for (const key of importantKeys) {
+									if (colors[key]) {
+										themColors[key] = colors[key];
+									}
+								}
+								
+								// Store alle gefundenen Farben für Fallback
+								entry.colors = Object.keys(themColors).length > 0 ? themColors : colors;
+								
+								// Swatch für schnelle Vorschau
 								const prefer = ['editor.background', 'editor.foreground', 'activityBar.background', 'sideBar.background', 'editorWidget.background'];
 								let found: string | undefined;
 								for (const key of prefer) {
