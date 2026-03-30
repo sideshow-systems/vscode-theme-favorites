@@ -47,7 +47,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 								await vscode.workspace.getConfiguration('workbench').update('colorTheme', message.name, vscode.ConfigurationTarget.Global);
 								this._themesProvider.refresh();
 								await this._sendInit();
-								vscode.window.showInformationMessage(`Theme gewechselt: ${message.name}`);
+								vscode.window.showInformationMessage(`Theme changed: ${message.name}`);
 							}
 							break;
 						case 'toggleFavorite':
@@ -98,11 +98,11 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 				}
 			}));
 		} catch (err) {
-			const msg = `Fehler beim Initialisieren der Theme-Webview: ${err}`;
+			const msg = `Error initializing theme webview: ${err}`;
 			this._out?.appendLine(msg);
 			// Fallback-HTML, damit die View etwas zeigt statt "kein Datenanbieter"
 			try {
-				webviewView.webview.html = `<div style="padding:12px;font-family:system-ui;">Fehler beim Laden der Theme‑Ansicht.<br>${escapeHtml(String(err))}</div>`;
+				webviewView.webview.html = `<div style="padding:12px;font-family:system-ui;">Error loading theme view.<br>${escapeHtml(String(err))}</div>`;
 			} catch (e) {
 				// ignore
 			}
@@ -112,12 +112,41 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	/**
 	 * Sendet die initialen Daten (Themes, Favoriten, aktives Theme) an das Webview.
 	 */
+	private getWebviewStrings() {
+		const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
+		const map = {
+			'en': {
+				searchPlaceholder: 'Search themes...',
+				refreshButton: 'Refresh',
+				groupDark: 'Dark',
+				groupLight: 'Light',
+				groupOther: 'Other',
+				pageTitle: 'Themes'
+			},
+			'de': {
+				searchPlaceholder: 'Themes suchen...',
+				refreshButton: 'Aktualisieren',
+				groupDark: 'Dunkel',
+				groupLight: 'Hell',
+				groupOther: 'Andere',
+				pageTitle: 'Themes durchsuchen'
+			}
+		};
+		return map[locale];
+	}
+
 	private async _sendInit() {
 		if (!this._view) return;
 		const themes = await this._themesProvider.getAllThemes();
 		const favorites = this._context.globalState.get<string[]>(FAVORITES_KEY, []);
 		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-		this._view.webview.postMessage({ command: 'init', themes, favorites, activeTheme: active });
+		this._view.webview.postMessage({
+			command: 'init',
+			themes,
+			favorites,
+			activeTheme: active,
+			strings: this.getWebviewStrings()
+		});
 	}
 
 	/**
@@ -139,7 +168,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; img-src ${cspSource} data:; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Themes</title>
+<title></title>
 <style>
 body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); padding: 8px; }
 .header { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
@@ -154,13 +183,14 @@ body { font-family: var(--vscode-font-family); color: var(--vscode-editor-foregr
 .themeItem .label { font-size:0.95em; }
 .themeItem .meta { font-size:0.8em; color:var(--vscode-editorHint-foreground); }
 .btn { background:transparent; border:none; color:var(--vscode-editor-foreground); cursor:pointer; }
-.btn.star { color: var(--vscode-button-foreground); }
+.btn.star { color: var(--vscode-terminal-ansiYellow); font-weight: 700; background: var(--vscode-input-background); border-radius: 4px; padding: 0 6px; border: 1px solid var(--vscode-editorWidget-border); box-shadow: inset 0 0 0 1px var(--vscode-input-border); }
+.btn.star:hover { background: var(--vscode-inputHoverBackground); }
 </style>
 </head>
 <body>
 <div class="header">
-<input id="search" placeholder="Search themes..." />
-<button id="refresh" class="btn">Refresh</button>
+<input id="search" />
+<button id="refresh" class="btn"></button>
 </div>
 <div id="content">
 <div id="groups"></div>
@@ -170,6 +200,14 @@ const vscode = acquireVsCodeApi();
 let themes = [];
 let favorites = [];
 let activeTheme = '';
+let strings = {
+	searchPlaceholder: 'Search themes...',
+	refreshButton: 'Refresh',
+	groupDark: 'Dark',
+	groupLight: 'Light',
+	groupOther: 'Other',
+	pageTitle: 'Themes'
+};
 
 function normalizeName(s) {
 	if (!s) return '';
@@ -183,10 +221,7 @@ function normalizeName(s) {
 function isSameTheme(a, b) {
 	const na = normalizeName(a);
 	const nb = normalizeName(b);
-	if (!na || !nb) return false;
-	if (na === nb) return true;
-	if ((na.includes(nb) || nb.includes(na)) && Math.min(na.length, nb.length) >= 3) return true;
-	return false;
+	return na && nb && na === nb;
 }
 
 function setActive(name) { activeTheme = name || ''; render(); }
@@ -210,7 +245,9 @@ function render() {
 	for (const key of ['dark','light','unknown']) {
 		const arr = groups[key]; if (!arr || arr.length === 0) continue;
 		const groupEl = document.createElement('div'); groupEl.className = 'group';
-		const title = document.createElement('h3'); title.textContent = key === 'dark' ? 'Dark' : (key === 'light' ? 'Light' : 'Other'); groupEl.appendChild(title);
+		const title = document.createElement('h3');
+		title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
+		groupEl.appendChild(title);
 		for (const t of arr) {
 			if (q && !t.label.toLowerCase().includes(q)) continue;
 			const active = isSameTheme(t.label, activeTheme);
@@ -231,10 +268,23 @@ function render() {
 	}
 }
 
+function updateUI() {
+	document.getElementById('search').placeholder = strings.searchPlaceholder;
+	document.getElementById('refresh').textContent = strings.refreshButton;
+	document.title = strings.pageTitle;
+}
+
 window.addEventListener('message', event => {
  const msg = event.data;
  switch (msg.command) {
- case 'init': themes = msg.themes || []; favorites = msg.favorites || []; activeTheme = msg.activeTheme || ''; render(); break;
+ case 'init':
+	 themes = msg.themes || [];
+	 favorites = msg.favorites || [];
+	 activeTheme = msg.activeTheme || '';
+	 strings = msg.strings || strings;
+	 updateUI();
+	 render();
+	 break;
  case 'favoritesUpdated': updateFavorites(msg.favorites || []); break;
  case 'activeThemeChanged': setActive(msg.activeTheme || ''); break;
  }

@@ -2,6 +2,8 @@
 
 Quickly manage and switch between your favorite VS Code themes. This extension allows you to mark installed themes as favorites and switch between them with a single click or command.
 
+![Preview](images/banner.png)
+
 ## Features
 
 - **Add/Remove Favorites**: Mark your preferred themes as favorites using the Command Palette
@@ -73,24 +75,7 @@ Quickly manage and switch between your favorite VS Code themes. This extension a
 
 ### Setup Instructions
 
-1. **Create Personal Access Token (PAT)**:
-   - Create an Azure DevOps Personal Access Token with "Marketplace (publish)" scope
-   - See: https://aka.ms/azure-devops-create-pat
-
-2. **Add GitLab CI Variable**:
-   - Go to Project → Settings → CI / CD → Variables
-   - Add variable `VSCE_PAT` with your PAT token
-   - Check "Masked" and "Protected" options
-
-3. **Trigger Publication**:
-   - Create and push a Git tag:
-     ```bash
-     git tag v1.0.1
-     git push origin --tags
-     ```
-   - The pipeline automatically builds and publishes to the marketplace
-
-4. **Local Testing**:
+1. **Local Testing**:
    ```bash
    # Create package
    npx vsce package
@@ -102,5 +87,4 @@ Quickly manage and switch between your favorite VS Code themes. This extension a
 
 ## Notes
 
-- The self-hosted GitLab runner requires outbound network access
 - Verify `package.json` contains correct fields: `publisher`, `name`, `version`, and `engines.vscode`

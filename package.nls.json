@@ -1,0 +1,23 @@
+{
+    "displayName": "Theme Favorites",
+    "description": "Easily save and manage your favorite VS Code themes.",
+    "viewsContainers.title": "Theme Favorites",
+    "views.favorites.name": "Favorites",
+    "views.browse.name": "Browse Themes",
+    "commands.addFavorite.title": "Theme Favorites: Add Favorite",
+    "commands.removeFavorite.title": "Theme Favorites: Remove Favorite",
+    "commands.chooseFavorite.title": "Theme Favorites: Choose Favorite",
+    "commands.openTheme.title": "Theme Favorites: Apply Theme",
+    "commands.toggleFavorite.title": "Theme Favorites: Toggle Favorite",
+    "commands.refresh.title": "Theme Favorites: Refresh View",
+    "webview.favorites.title": "Favorites",
+    "webview.themes.title": "Themes",
+    "webview.search.placeholder": "Search themes...",
+    "webview.refresh.button": "Refresh",
+    "webview.remove.button": "Remove",
+    "webview.group.dark": "Dark",
+    "webview.group.light": "Light",
+    "webview.group.other": "Other",
+    "webview.page.title.favorites": "Favorites",
+    "webview.page.title.themes": "Themes"
+}
