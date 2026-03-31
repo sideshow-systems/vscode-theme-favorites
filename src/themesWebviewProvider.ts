@@ -175,10 +175,10 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 <title></title>
 <style>
 * { box-sizing: border-box; }
-body { 
-  font-family: var(--vscode-font-family); 
-  color: var(--vscode-editor-foreground); 
-  background: var(--vscode-editor-background); 
+body {
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
   padding: 0;
   margin: 0;
 }
@@ -196,14 +196,14 @@ body {
   flex-wrap: wrap;
 }
 
-#search { 
+#search {
   flex: 1;
   min-width: 150px;
-  padding: 6px 8px; 
-  border-radius: 4px; 
-  border: 1px solid var(--vscode-editorWidget-border); 
-  background: var(--vscode-input-background); 
-  color: var(--vscode-input-foreground); 
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
   font-family: var(--vscode-font-family);
 }
 
@@ -264,21 +264,21 @@ body {
   cursor: pointer;
 }
 
-#content { 
+#content {
   padding: 8px;
 }
 
-.group { 
+.group {
   margin-bottom: 16px;
   border: 1px solid var(--vscode-editorWidget-border);
   border-radius: 6px;
   overflow: hidden;
 }
 
-.group h3 { 
+.group h3 {
   margin: 0;
   padding: 8px 12px;
-  font-weight: 600; 
+  font-weight: 600;
   font-size: 1.05em;
   background: var(--vscode-editor-lineNumberActiveForeground);
   color: var(--vscode-editor-foreground);
@@ -292,11 +292,11 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
-.themeItem { 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  padding: 8px 12px; 
+.themeItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
   border-radius: 0;
   margin: 0;
   background: transparent;
@@ -309,32 +309,32 @@ body {
   border-bottom: none;
 }
 
-.themeItem:hover { 
+.themeItem:hover {
   background: var(--vscode-list-hoverBackground);
 }
 
-.themeItem.active { 
-  outline: 2px solid var(--vscode-focusBorder); 
+.themeItem.active {
+  outline: 2px solid var(--vscode-focusBorder);
   background: var(--vscode-list-activeSelectionBackground);
 }
 
-.themeItem .left { 
-  display: flex; 
-  gap: 8px; 
+.themeItem .left {
+  display: flex;
+  gap: 8px;
   align-items: center;
   flex: 1;
   min-width: 0;
 }
 
-.themeItem .label { 
+.themeItem .label {
   font-size: 0.95em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.themeItem .meta { 
-  font-size: 0.8em; 
+.themeItem .meta {
+  font-size: 0.8em;
   color: var(--vscode-editorHint-foreground);
   flex-shrink: 0;
 }
@@ -361,19 +361,19 @@ body {
   border-radius: 2px;
 }
 
-.btn { 
-  background: transparent; 
-  border: none; 
-  color: var(--vscode-editor-foreground); 
+.btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-editor-foreground);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 3px;
   transition: background-color 0.15s;
 }
 
-.btn.star { 
-  color: var(--vscode-terminal-ansiYellow); 
-  font-weight: 700; 
+.btn.star {
+  color: var(--vscode-terminal-ansiYellow);
+  font-weight: 700;
 }
 
 .btn:hover {
@@ -439,18 +439,55 @@ function setActive(name) { activeTheme = name || ''; render(); }
 function updateFavorites(list) { favorites = list || []; render(); }
 
 function categorizeTheme(t) {
+	// prefer explicit editor.background color if available
 	if (!t || typeof t !== 'object') return 'unknown';
+	function parseColor(input) {
+		if (!input || typeof input !== 'string') return null;
+		const s = input.trim().toLowerCase();
+		if (s[0] === '#') {
+			const hex = s.substring(1);
+			if (hex.length === 3) {
+				return { r: parseInt(hex[0] + hex[0], 16), g: parseInt(hex[1] + hex[1], 16), b: parseInt(hex[2] + hex[2], 16) };
+			}
+			if (hex.length === 4) {
+				return { r: parseInt(hex[0] + hex[0], 16), g: parseInt(hex[1] + hex[1], 16), b: parseInt(hex[2] + hex[2], 16) };
+			}
+			if (hex.length === 6 || hex.length === 8) {
+				return { r: parseInt(hex.substring(0, 2), 16), g: parseInt(hex.substring(2, 4), 16), b: parseInt(hex.substring(4, 6), 16) };
+			}
+		}
+		const rgbMatch = s.match(/rgba?\(([^)]+)\)/);
+		if (rgbMatch) {
+			const parts = rgbMatch[1].split(',').map(p => p.trim());
+			if (parts.length >= 3) {
+				const parsePart = (p) => p.endsWith('%') ? Math.round(parseFloat(p) * 2.55) : Math.round(parseFloat(p));
+				const r = parsePart(parts[0]);
+				const g = parsePart(parts[1]);
+				const b = parsePart(parts[2]);
+				if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return { r, g, b };
+			}
+		}
+		return null;
+	}
+	function brightnessOf(color) {
+		const rgb = parseColor(color);
+		if (!rgb) return null;
+		return Math.round((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000);
+	}
+	// prefer color from theme file
+	if (t.colors && (t.colors['editor.background'] || t.colors['editorBackground'])) {
+		const bg = t.colors['editor.background'] || t.colors['editorBackground'];
+		const b = brightnessOf(bg);
+		if (b !== null) return b > 128 ? 'light' : 'dark';
+	}
 	const ui = (t.uiTheme || '').toLowerCase();
 	const label = (t.label || '').toLowerCase();
-	
-	// Check uiTheme first
+	// Check uiTheme next
 	if (ui.includes('dark')) return 'dark';
 	if (ui.includes('vs') || ui.includes('light')) return 'light';
-	
-	// Fallback: check theme name for known dark variants (Catppuccin, etc.)
+	// Fallback: check theme name for known variants
 	if (label && (label.includes('dark') || label.includes('frappe') || label.includes('mocha'))) return 'dark';
 	if (label && (label.includes('light') || label.includes('latte'))) return 'light';
-	
 	return 'unknown';
 }
 
@@ -476,7 +513,7 @@ function render() {
 		const q = document.getElementById('search').value.trim().toLowerCase();
 		let filtered = themes.filter(t => !q || (t && t.label && t.label.toLowerCase().includes(q)));
 		filtered = filterThemesByType(filtered, currentFilter);
-		
+
 		if (!filtered || filtered.length === 0) {
 		  document.getElementById('groups').innerHTML = '<div id="noItems">' + strings.noThemesFound + '</div>';
 		  return;
@@ -493,10 +530,10 @@ function render() {
 			const title = document.createElement('h3');
 			title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
 			groupEl.appendChild(title);
-			
+
 			const itemsContainer = document.createElement('div');
 			itemsContainer.className = 'groupItems';
-			
+
 			for (const t of arr) {
 				if (!t || !t.label) continue;
 				const active = isSameTheme(t.label, activeTheme);
@@ -504,13 +541,13 @@ function render() {
 				item.className = 'themeItem' + (active ? ' active' : '');
 				const left = document.createElement('div');
 				left.className = 'left';
-				
+
 				// Create color swatch with 5 dominant theme colors
 				const swatch = document.createElement('div');
 				swatch.className = 'theme-swatch';
 				if (!showSwatches) swatch.classList.add('hidden');
 				const colors = t.colors || {};
-				
+
 				// Set fallback based on theme type
 				let bgFallback = '#1e1e1e';
 				let fgFallback = '#d4d4d4';
@@ -519,7 +556,7 @@ function render() {
 					bgFallback = '#ffffff';
 					fgFallback = '#333333';
 				}
-				
+
 				// Select 5 important colors in priority order
 				const paletteKeys = [
 					'editor.background',
@@ -528,9 +565,9 @@ function render() {
 					'terminal.ansiRed',
 					'activityBar.background'
 				];
-				
+
 				const paletteFallbacks = [bgFallback, fgFallback, '#0e639c', '#f48771', '#333333'];
-				
+
 				for (let i = 0; i < 5; i++) {
 					const colorValue = colors[paletteKeys[i]] || paletteFallbacks[i];
 					const colorDiv = document.createElement('div');
@@ -539,9 +576,9 @@ function render() {
 					colorDiv.title = paletteKeys[i];
 					swatch.appendChild(colorDiv);
 				}
-				
+
 				left.appendChild(swatch);
-				
+
 				const lbl = document.createElement('div');
 				lbl.className = 'label';
 				lbl.textContent = t.label;

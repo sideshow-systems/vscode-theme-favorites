@@ -84,31 +84,78 @@ export class ThemesProvider implements vscode.TreeDataProvider<ThemeNode> {
 			];
 		}
 
-		// If a group was expanded: return themes belonging to that kind
-		if (element instanceof GroupItem) {
-			const set = new Map<string, { label: string; uiTheme: string | undefined; extDisplay?: string; extId?: string; iconPath?: string | undefined; }>();
-			for (const ext of vscode.extensions.all) {
-				const contributes = ext.packageJSON && ext.packageJSON.contributes;
-				const themes = contributes && contributes.themes;
-				if (!themes) continue;
-				for (const t of themes) {
-					const label = typeof t === 'string' ? t : (t.label ?? t.id ?? t.path);
-					const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
-					if (!label) continue;
-					const kind = uiTheme && uiTheme.toLowerCase().includes('dark') ? 'dark' : (uiTheme && (uiTheme.toLowerCase().includes('vs') || uiTheme.toLowerCase().includes('light')) ? 'light' : 'unknown');
-					if (kind !== element.kind) continue;
-					if (!set.has(label)) {
-						set.set(label, { label, uiTheme, extDisplay: ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name), extId: ext.id, iconPath: ext.packageJSON && ext.packageJSON.icon ? path.join(ext.extensionPath, ext.packageJSON.icon) : undefined });
+		// Helper: try to determine kind from parsed theme entry (colors > uiTheme > name)
+		function determineKind(entry: { label: string; uiTheme?: string; colors?: { [k: string]: string } }): 'dark' | 'light' | 'unknown' {
+			// Prefer explicit editor.background color when available
+			try {
+				const bg = entry.colors && (entry.colors['editor.background'] || entry.colors['editorBackground']);
+				if (bg && typeof bg === 'string') {
+					const rgb = parseColor(bg);
+					if (rgb) {
+						const lum = Math.round((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000);
+						return lum > 128 ? 'light' : 'dark';
 					}
 				}
+			} catch (e) { /* ignore parse errors */ }
+			// Fallback to uiTheme
+			const ui = (entry.uiTheme || '').toLowerCase();
+			if (ui.includes('dark')) return 'dark';
+			if (ui.includes('vs') || ui.includes('light')) return 'light';
+			// Fallback: inspect label heuristics
+			const lab = entry.label.toLowerCase();
+			if (lab.includes('dark') || lab.includes('frappe') || lab.includes('mocha')) return 'dark';
+			if (lab.includes('light') || lab.includes('latte')) return 'light';
+			return 'unknown';
+		}
+
+		function parseColor(input: string): { r: number; g: number; b: number } | null {
+			if (!input || typeof input !== 'string') return null;
+			const s = input.trim().toLowerCase();
+			// hex formats
+			if (s[0] === '#') {
+				const hex = s.substring(1);
+				if (hex.length === 3) {
+					const r = parseInt(hex[0] + hex[0], 16);
+					const g = parseInt(hex[1] + hex[1], 16);
+					const b = parseInt(hex[2] + hex[2], 16);
+					return { r, g, b };
+				}
+				if (hex.length === 4) {
+					const r = parseInt(hex[0] + hex[0], 16);
+					const g = parseInt(hex[1] + hex[1], 16);
+					const b = parseInt(hex[2] + hex[2], 16);
+					return { r, g, b };
+				}
+				if (hex.length === 6 || hex.length === 8) {
+					const r = parseInt(hex.substring(0, 2), 16);
+					const g = parseInt(hex.substring(2, 4), 16);
+					const b = parseInt(hex.substring(4, 6), 16);
+					return { r, g, b };
+				}
 			}
-			const items = Array.from(set.values()).sort((a, b) => a.label.localeCompare(b.label));
+			// rgb/rgba
+			const rgbMatch = s.match(/rgba?\(([^)]+)\)/);
+			if (rgbMatch) {
+				const parts = rgbMatch[1].split(',').map(p => p.trim());
+				if (parts.length >= 3) {
+					const parsePart = (p: string) => p.endsWith('%') ? Math.round(parseFloat(p) * 2.55) : Math.round(parseFloat(p));
+					const r = parsePart(parts[0]);
+					const g = parsePart(parts[1]);
+					const b = parsePart(parts[2]);
+					if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return { r, g, b };
+				}
+			}
+			return null;
+		}
+
+		if (element instanceof GroupItem) {
+			const all = await this.getAllThemes();
+			const items = all.filter(t => determineKind(t) === element.kind).sort((a, b) => a.label.localeCompare(b.label));
 			return items.map(i => {
 				const item = new ThemeItem(i.label, favs.includes(i.label), isSameTheme(i.label, active));
-				// augment tooltip with extension info
 				item.tooltip = `${i.label}\nFrom: ${i.extDisplay ?? i.extId}\nuiTheme: ${i.uiTheme ?? 'unknown'}`;
-				if (i.iconPath) {
-					item.iconPath = { light: vscode.Uri.file(i.iconPath), dark: vscode.Uri.file(i.iconPath) };
+				if (i.extId) {
+					// icon handled in getAllThemes as file path not returned here, keep existing behavior minimal
 				}
 				return item;
 			});
