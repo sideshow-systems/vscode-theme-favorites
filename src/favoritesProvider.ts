@@ -81,6 +81,44 @@ export class FavoritesProvider implements vscode.TreeDataProvider<FavoriteNode> 
 			return false;
 		}
 
+		function parseColor(input: string): { r: number; g: number; b: number } | null {
+			if (!input || typeof input !== 'string') return null;
+			const s = input.trim().toLowerCase();
+			if (s[0] === '#') {
+				const hex = s.substring(1);
+				if (hex.length === 3) {
+					const r = parseInt(hex[0] + hex[0], 16);
+					const g = parseInt(hex[1] + hex[1], 16);
+					const b = parseInt(hex[2] + hex[2], 16);
+					return { r, g, b };
+				}
+				if (hex.length === 4) {
+					const r = parseInt(hex[0] + hex[0], 16);
+					const g = parseInt(hex[1] + hex[1], 16);
+					const b = parseInt(hex[2] + hex[2], 16);
+					return { r, g, b };
+				}
+				if (hex.length === 6 || hex.length === 8) {
+					const r = parseInt(hex.substring(0, 2), 16);
+					const g = parseInt(hex.substring(2, 4), 16);
+					const b = parseInt(hex.substring(4, 6), 16);
+					return { r, g, b };
+				}
+			}
+			const rgbMatch = s.match(/rgba?\(([^)]+)\)/);
+			if (rgbMatch) {
+				const parts = rgbMatch[1].split(',').map(p => p.trim());
+				if (parts.length >= 3) {
+					const parsePart = (p: string) => p.endsWith('%') ? Math.round(parseFloat(p) * 2.55) : Math.round(parseFloat(p));
+					const r = parsePart(parts[0]);
+					const g = parsePart(parts[1]);
+					const b = parsePart(parts[2]);
+					if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return { r, g, b };
+				}
+			}
+			return null;
+		}
+
 		if (!element) {
 			return [
 				new GroupItem('Dark Favorites', 'dark'),
@@ -92,7 +130,7 @@ export class FavoritesProvider implements vscode.TreeDataProvider<FavoriteNode> 
 		if (element instanceof GroupItem) {
 			const results: FavoriteNode[] = [];
 			for (const fav of (favs || [])) {
-				// try to find uiTheme for this favorite
+				// try to determine kind for this favorite (prefer editor.background color)
 				let kind: 'dark' | 'light' | 'unknown' = 'unknown';
 				let extDisplay: string | undefined;
 				let iconPath: string | undefined;
@@ -104,8 +142,36 @@ export class FavoritesProvider implements vscode.TreeDataProvider<FavoriteNode> 
 						const label = typeof t === 'string' ? t : (t.label ?? t.id ?? t.path);
 						if (!label) continue;
 						if (isSameTheme(label, fav)) {
-							const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
-							kind = uiTheme && uiTheme.toLowerCase().includes('dark') ? 'dark' : (uiTheme && (uiTheme.toLowerCase().includes('vs') || uiTheme.toLowerCase().includes('light')) ? 'light' : 'unknown');
+							// attempt to read theme file and inspect editor.background
+							try {
+								const themePath = typeof t === 'object' && (t.path || t.file) ? path.join(ext.extensionPath, (t.path || t.file)) : undefined;
+								if (themePath) {
+									const uri = vscode.Uri.file(themePath);
+									const bytes = await vscode.workspace.fs.readFile(uri);
+									const raw = Buffer.from(bytes).toString('utf8');
+									let parsed: any = undefined;
+									if (raw && raw.trim().startsWith('{')) {
+										try { parsed = JSON.parse(raw); } catch (e) { parsed = undefined; }
+									}
+									if (parsed && parsed.colors && typeof parsed.colors === 'object') {
+										const bg = parsed.colors['editor.background'] || parsed.colors['editorBackground'];
+										if (bg && typeof bg === 'string') {
+											const rgb = parseColor(bg);
+											if (rgb) {
+												const lum = Math.round((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000);
+												kind = lum > 128 ? 'light' : 'dark';
+											}
+										}
+									}
+								}
+							} catch (e) {
+								// ignore file read/parse errors
+							}
+							// fallback to uiTheme if we couldn't determine by color
+							if (kind === 'unknown') {
+								const uiTheme = typeof t === 'object' ? (t.uiTheme as string | undefined) : undefined;
+								kind = uiTheme && uiTheme.toLowerCase().includes('dark') ? 'dark' : (uiTheme && (uiTheme.toLowerCase().includes('vs') || uiTheme.toLowerCase().includes('light')) ? 'light' : 'unknown');
+							}
 							extDisplay = ext.packageJSON && (ext.packageJSON.displayName || ext.packageJSON.name);
 							if (ext.packageJSON && ext.packageJSON.icon) {
 								iconPath = path.join(ext.extensionPath, ext.packageJSON.icon);

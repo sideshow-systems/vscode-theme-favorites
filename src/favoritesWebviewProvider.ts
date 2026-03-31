@@ -79,7 +79,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                 groupOther: 'Other',
                 removeButton: 'Remove',
                 pageTitle: 'Favorites',
-                noFavorites: 'No favorites yet. Add themes from the Browse view.'
+                noFavorites: 'No favorites yet. Add themes from the Browse view.',
+                toggleColorsLabel: 'Colors'
             },
             'de': {
                 searchPlaceholder: 'Favoriten filtern...',
@@ -88,7 +89,8 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
                 groupOther: 'Andere',
                 removeButton: 'Entfernen',
                 pageTitle: 'Theme Favoriten',
-                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.'
+                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
+                toggleColorsLabel: 'Farben'
             }
         };
         return map[locale];
@@ -121,10 +123,10 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 <title></title>
 <style>
 * { box-sizing: border-box; }
-body { 
-  font-family: var(--vscode-font-family); 
-  color: var(--vscode-editor-foreground); 
-  background: var(--vscode-editor-background); 
+body {
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
   padding: 0;
   margin: 0;
 }
@@ -136,15 +138,18 @@ body {
   padding: 8px;
   border-bottom: 1px solid var(--vscode-editorWidget-border);
   z-index: 100;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-#search { 
-  width: 100%;
-  padding: 6px 8px; 
-  border-radius: 4px; 
-  border: 1px solid var(--vscode-editorWidget-border); 
-  background: var(--vscode-input-background); 
-  color: var(--vscode-input-foreground); 
+#search {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
   font-family: var(--vscode-font-family);
 }
 
@@ -152,21 +157,46 @@ body {
   color: var(--vscode-input-placeholderForeground);
 }
 
-#content { 
+#toggleSwatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.85em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#toggleSwatches:hover {
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-editorWidget-border);
+}
+
+.swatch-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+#content {
   padding: 8px;
 }
 
-.group { 
+.group {
   margin-bottom: 16px;
   border: 1px solid var(--vscode-editorWidget-border);
   border-radius: 6px;
   overflow: hidden;
 }
 
-.group h3 { 
+.group h3 {
   margin: 0;
   padding: 8px 12px;
-  font-weight: 600; 
+  font-weight: 600;
   font-size: 1.05em;
   background: var(--vscode-editor-lineNumberActiveForeground);
   color: var(--vscode-editor-foreground);
@@ -180,11 +210,11 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
-.themeItem { 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  padding: 8px 12px; 
+.themeItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
   border-radius: 0;
   margin: 0;
   cursor: pointer;
@@ -196,40 +226,62 @@ body {
   border-bottom: none;
 }
 
-.themeItem:hover { 
+.themeItem:hover {
   background: var(--vscode-list-hoverBackground);
 }
 
-.themeItem.active { 
-  outline: 2px solid var(--vscode-focusBorder); 
+.themeItem.active {
+  outline: 2px solid var(--vscode-focusBorder);
   background: var(--vscode-list-activeSelectionBackground);
 }
 
-.themeItem .left { 
-  display: flex; 
-  gap: 8px; 
+.themeItem .left {
+  display: flex;
+  gap: 8px;
   align-items: center;
   flex: 1;
   min-width: 0;
 }
 
-.themeItem .label { 
+.themeItem .label {
   font-size: 0.95em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.themeItem .meta { 
-  font-size: 0.8em; 
+.themeItem .meta {
+  font-size: 0.8em;
   color: var(--vscode-editorHint-foreground);
   flex-shrink: 0;
 }
 
-.btn { 
-  background: transparent; 
-  border: none; 
-  color: var(--vscode-editor-foreground); 
+.theme-swatch {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-editorWidget-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  height: 24px;
+  aspect-ratio: 5 / 1;
+  min-width: 90px;
+}
+
+.theme-swatch-color {
+  background: #1e1e1e;
+  border-radius: 2px;
+}
+
+.theme-swatch.hidden {
+  display: none;
+}
+
+.btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-editor-foreground);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 3px;
@@ -251,6 +303,10 @@ body {
 <body>
 <div id="header">
   <input id="search" type="text" />
+  <label id="toggleSwatches">
+    <input type="checkbox" class="swatch-checkbox" id="swatchToggle" />
+    <span id="toggleSwatchesLabel">Colors</span>
+  </label>
 </div>
 <div id="content">
   <div id="groups"></div>
@@ -260,6 +316,7 @@ const vscode = acquireVsCodeApi();
 let themes = [];
 let favorites = [];
 let activeTheme = '';
+let showSwatches = false;
 let strings = {
     searchPlaceholder: 'Filter favorites...',
     groupDark: 'Dark',
@@ -285,11 +342,56 @@ function isSameTheme(a, b) {
     return na && nb && na === nb;
 }
 
+function categorizeTheme(t) {
+  // prefer explicit editor.background color if available
+  if (!t) return 'unknown';
+  function parseColor(input) {
+    if (!input || typeof input !== 'string') return null;
+    const s = input.trim().toLowerCase();
+    if (s[0] === '#') {
+      const hex = s.substring(1);
+      if (hex.length === 3) return { r: parseInt(hex[0] + hex[0], 16), g: parseInt(hex[1] + hex[1], 16), b: parseInt(hex[2] + hex[2], 16) };
+      if (hex.length === 4) return { r: parseInt(hex[0] + hex[0], 16), g: parseInt(hex[1] + hex[1], 16), b: parseInt(hex[2] + hex[2], 16) };
+      if (hex.length === 6 || hex.length === 8) return { r: parseInt(hex.substring(0, 2), 16), g: parseInt(hex.substring(2, 4), 16), b: parseInt(hex.substring(4, 6), 16) };
+    }
+    const rgbMatch = s.match(/rgba?\(([^)]+)\)/);
+    if (rgbMatch) {
+      const parts = rgbMatch[1].split(',').map(p => p.trim());
+      if (parts.length >= 3) {
+        const parsePart = (p) => p.endsWith('%') ? Math.round(parseFloat(p) * 2.55) : Math.round(parseFloat(p));
+        const r = parsePart(parts[0]);
+        const g = parsePart(parts[1]);
+        const b = parsePart(parts[2]);
+        if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return { r, g, b };
+      }
+    }
+    return null;
+  }
+  function brightnessOf(color) {
+    const rgb = parseColor(color);
+    if (!rgb) return null;
+    return Math.round((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000);
+  }
+  if (t.colors && (t.colors['editor.background'] || t.colors['editorBackground'])) {
+    const bg = t.colors['editor.background'] || t.colors['editorBackground'];
+    const b = brightnessOf(bg);
+    if (b !== null) return b > 128 ? 'light' : 'dark';
+  }
+  const ui = (t.uiTheme || '').toLowerCase();
+  const label = (t.label || '').toLowerCase();
+  // Check uiTheme next
+  if (ui.includes('dark')) return 'dark';
+  if (ui.includes('vs') || ui.includes('light')) return 'light';
+  // Fallback: check theme name for known variants
+  if (label.includes('dark') || label.includes('frappe') || label.includes('mocha')) return 'dark';
+  if (label.includes('light') || label.includes('latte')) return 'light';
+  return 'unknown';
+}
+
 function groupThemes(list) {
  const groups = { dark: [], light: [], unknown: [] };
  for (const t of list) {
-    const ui = (t.uiTheme || '').toLowerCase();
-    const kind = ui.includes('dark') ? 'dark' : (ui.includes('vs') || ui.includes('light') ? 'light' : 'unknown');
+    const kind = categorizeTheme(t);
     groups[kind].push(t);
  }
  return groups;
@@ -298,49 +400,86 @@ function groupThemes(list) {
 function render() {
  const q = document.getElementById('search').value.trim().toLowerCase();
  const filtered = themes.filter(t => !q || t.label.toLowerCase().includes(q));
- 
+
  if (filtered.length === 0) {
    document.getElementById('groups').innerHTML = '<div id="noItems">' + strings.noFavorites + '</div>';
    return;
  }
 
- const container = document.getElementById('groups'); 
+ const container = document.getElementById('groups');
  container.innerHTML = '';
  const groups = groupThemes(filtered);
  for (const key of ['dark','light','unknown']) {
-    const arr = groups[key]; 
+    const arr = groups[key];
     if (!arr || arr.length === 0) continue;
-    const groupEl = document.createElement('div'); 
+    const groupEl = document.createElement('div');
     groupEl.className = 'group';
     const title = document.createElement('h3');
     title.textContent = key === 'dark' ? strings.groupDark : (key === 'light' ? strings.groupLight : strings.groupOther);
     groupEl.appendChild(title);
-    
+
     const itemsContainer = document.createElement('div');
     itemsContainer.className = 'groupItems';
-    
+
     for (const t of arr) {
         const active = isSameTheme(t.label, activeTheme);
-        const item = document.createElement('div'); 
+        const item = document.createElement('div');
         item.className = 'themeItem' + (active ? ' active' : '');
-        const left = document.createElement('div'); 
+        const left = document.createElement('div');
         left.className = 'left';
-        const lbl = document.createElement('div'); 
-        lbl.className = 'label'; 
+
+        // Create color swatch with 5 dominant theme colors
+        const swatch = document.createElement('div');
+        swatch.className = 'theme-swatch' + (showSwatches ? '' : ' hidden');
+        const colors = t.colors || {};
+
+        // Set fallback based on theme type
+        let bgFallback = '#1e1e1e';
+        let fgFallback = '#d4d4d4';
+        const ui = (t.uiTheme || '').toLowerCase();
+        if (ui.includes('vs') || ui.includes('light')) {
+            bgFallback = '#ffffff';
+            fgFallback = '#333333';
+        }
+
+        // Select 5 important colors in priority order
+        const paletteKeys = [
+            'editor.background',
+            'editor.foreground',
+            'button.background',
+            'terminal.ansiRed',
+            'activityBar.background'
+        ];
+
+        const paletteFallbacks = [bgFallback, fgFallback, '#0e639c', '#f48771', '#333333'];
+
+        for (let i = 0; i < 5; i++) {
+            const colorValue = colors[paletteKeys[i]] || paletteFallbacks[i];
+            const colorDiv = document.createElement('div');
+            colorDiv.className = 'theme-swatch-color';
+            colorDiv.style.backgroundColor = colorValue;
+            colorDiv.title = paletteKeys[i];
+            swatch.appendChild(colorDiv);
+        }
+
+        left.appendChild(swatch);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'label';
         lbl.textContent = t.label;
-        const meta = document.createElement('div'); 
-        meta.className = 'meta'; 
+        const meta = document.createElement('div');
+        meta.className = 'meta';
         meta.textContent = t.extDisplay || t.extId || '';
-        left.appendChild(lbl); 
+        left.appendChild(lbl);
         left.appendChild(meta);
         const right = document.createElement('div');
-        const btn = document.createElement('button'); 
-        btn.className = 'btn'; 
+        const btn = document.createElement('button');
+        btn.className = 'btn';
         btn.innerText = strings.removeButton;
         btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
         item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
         right.appendChild(btn);
-        item.appendChild(left); 
+        item.appendChild(left);
         item.appendChild(right);
         itemsContainer.appendChild(item);
     }
@@ -351,6 +490,7 @@ function render() {
 
 function updateUI() {
 	document.getElementById('search').placeholder = strings.searchPlaceholder;
+	document.getElementById('toggleSwatchesLabel').textContent = strings.toggleColorsLabel;
 	document.title = strings.pageTitle;
 }
 
@@ -365,14 +505,27 @@ window.addEventListener('message', event => {
       updateUI();
       render();
       break;
-  case 'favoritesUpdated': 
-      favorites = msg.favorites || []; 
-      render(); 
+  case 'favoritesUpdated':
+      favorites = msg.favorites || [];
+      render();
       break;
  }
 });
 
 document.getElementById('search').addEventListener('input', () => render());
+
+document.getElementById('swatchToggle').addEventListener('change', (e) => {
+	showSwatches = e.target.checked;
+	const swatches = document.querySelectorAll('.theme-swatch');
+	swatches.forEach(swatch => {
+		if (showSwatches) {
+			swatch.classList.remove('hidden');
+		} else {
+			swatch.classList.add('hidden');
+		}
+	});
+});
+
 vscode.postMessage({ command: 'initRequest' });
 </script>
 </body>
