@@ -1,0 +1,19 @@
+project:
+  name: vscode-theme-favorites
+  description: VS Code extension for managing and quickly switching between favorite themes
+  created: "2026-04-27T00:00:00Z"
+  fire_version: "0.1.8"
+
+workspace:
+  type: brownfield
+  structure: monolith
+  autonomy_bias: balanced
+  run_scope_preference: single
+  run_scope_history: []
+  scanned_at: "2026-04-27T00:00:00Z"
+
+intents: []
+
+runs:
+  active: []
+  completed: []
