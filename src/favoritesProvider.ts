@@ -233,7 +233,7 @@ export class FavoritesProvider implements vscode.TreeDataProvider<FavoriteNode> 
 					results.push(item);
 				}
 			}
-			return results.sort((a, b) => a.label.localeCompare(b.label));
+			return results;
 		}
 
 		return [];

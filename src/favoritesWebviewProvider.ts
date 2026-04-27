@@ -45,6 +45,12 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 								vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
 							}
 							break;
+						case 'reorderFavorites':
+							if (Array.isArray(msg.favorites)) {
+								await setFavorites(msg.favorites);
+								await this._sendInit();
+							}
+							break;
 						case 'removeFavorite':
 							if (!msg.name) break;
 							const favs = getFavorites();
@@ -118,7 +124,10 @@ export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
 		if (!this._view) return;
 		const all = await this._themesProvider.getAllThemes();
 		const favorites = getFavorites();
-		const favItems = all.filter((t) => favorites.includes(t.label));
+		const favItemMap = new Map(all.map((t) => [t.label, t]));
+		const favItems = favorites
+			.map((name) => favItemMap.get(name))
+			.filter((t): t is NonNullable<typeof t> => t !== undefined);
 		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
 		this._view.webview.postMessage({
 			command: 'init',
@@ -310,6 +319,32 @@ body {
   background: var(--vscode-list-hoverBackground);
 }
 
+.drag-handle {
+  cursor: grab;
+  padding: 0 6px 0 2px;
+  color: var(--vscode-editorHint-foreground);
+  opacity: 0.5;
+  flex-shrink: 0;
+  user-select: none;
+  font-size: 14px;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+}
+
+.themeItem.dragging {
+  opacity: 0.4;
+}
+
+.themeItem.drag-over-top {
+  border-top: 2px solid var(--vscode-focusBorder);
+}
+
+.themeItem.drag-over-bottom {
+  border-bottom: 2px solid var(--vscode-focusBorder);
+}
+
 #noItems {
   text-align: center;
   padding: 16px 8px;
@@ -344,6 +379,7 @@ let strings = {
     pageTitle: 'Favorites',
     noFavorites: 'No favorites yet.'
 };
+let dragState = null; // { label, groupKey }
 
 function normalizeName(s) {
     if (!s) return '';
@@ -443,6 +479,72 @@ function render() {
         const active = isSameTheme(t.label, activeTheme);
         const item = document.createElement('div');
         item.className = 'themeItem' + (active ? ' active' : '');
+        item.draggable = true;
+        item.dataset.label = t.label;
+        item.dataset.group = key;
+
+        item.addEventListener('dragstart', (e) => {
+            dragState = { label: t.label, groupKey: key };
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            document.querySelectorAll('.drag-over-top, .drag-over-bottom')
+                .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+        });
+        item.addEventListener('dragover', (e) => {
+            if (!dragState || dragState.groupKey !== key) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            document.querySelectorAll('.drag-over-top, .drag-over-bottom')
+                .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+            const rect = item.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            item.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+        });
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (!dragState || dragState.groupKey !== key || dragState.label === t.label) {
+                dragState = null;
+                return;
+            }
+            const rect = item.getBoundingClientRect();
+            const insertBefore = e.clientY < rect.top + rect.height / 2;
+            const groupLabels = arr.map(x => x.label);
+            const fromIdx = groupLabels.indexOf(dragState.label);
+            const toIdx = groupLabels.indexOf(t.label);
+            if (fromIdx === -1 || toIdx === -1) { dragState = null; return; }
+            groupLabels.splice(fromIdx, 1);
+            const newToIdx = groupLabels.indexOf(t.label);
+            groupLabels.splice(insertBefore ? newToIdx : newToIdx + 1, 0, dragState.label);
+            // Rebuild full favorites array, replacing this group's items with new order
+            const groupLabelSet = new Set(arr.map(x => x.label));
+            const newFavorites = [];
+            let groupInserted = false;
+            for (const f of favorites) {
+                if (groupLabelSet.has(f)) {
+                    if (!groupInserted) {
+                        newFavorites.push(...groupLabels);
+                        groupInserted = true;
+                    }
+                } else {
+                    newFavorites.push(f);
+                }
+            }
+            dragState = null;
+            vscode.postMessage({ command: 'reorderFavorites', favorites: newFavorites });
+        });
+
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.textContent = '⠿';
+        handle.title = 'Drag to reorder';
+
         const left = document.createElement('div');
         left.className = 'left';
 
@@ -497,6 +599,7 @@ function render() {
         btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
         item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
         right.appendChild(btn);
+        item.appendChild(handle);
         item.appendChild(left);
         item.appendChild(right);
         itemsContainer.appendChild(item);

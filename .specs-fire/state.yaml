@@ -1,19 +1,48 @@
 project:
   name: vscode-theme-favorites
   description: VS Code extension for managing and quickly switching between favorite themes
-  created: "2026-04-27T00:00:00Z"
-  fire_version: "0.1.8"
-
+  created: 2026-04-27T00:00:00Z
+  fire_version: 0.1.8
 workspace:
   type: brownfield
   structure: monolith
   autonomy_bias: balanced
   run_scope_preference: single
   run_scope_history: []
-  scanned_at: "2026-04-27T00:00:00Z"
-
-intents: []
-
+  scanned_at: 2026-04-27T00:00:00Z
+intents:
+  - id: favoriten-reihenfolge-sortierbar
+    title: Favoriten per Drag & Drop sortierbar
+    status: in_progress
+    work_items:
+      - id: preserve-insertion-order
+        title: Alphabetische Sortierung entfernen
+        status: completed
+        complexity: low
+        mode: autopilot
+        depends_on: []
+        run_id: run-vscode-theme-favorites-001
+        completed_at: 2026-04-27T20:29:14.221Z
+      - id: implement-drag-and-drop
+        title: Drag & Drop für Favoriten-TreeView implementieren
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on:
+          - preserve-insertion-order
+        run_id: run-vscode-theme-favorites-001
+        completed_at: 2026-04-27T20:29:14.221Z
 runs:
   active: []
-  completed: []
+  completed:
+    - id: run-vscode-theme-favorites-001
+      scope: wide
+      work_items:
+        - id: preserve-insertion-order
+          intent: favoriten-reihenfolge-sortierbar
+          mode: autopilot
+        - id: implement-drag-and-drop
+          intent: favoriten-reihenfolge-sortierbar
+          mode: confirm
+      started: 2026-04-27T20:18:25.642Z
+      completed: 2026-04-27T20:29:14.221Z
