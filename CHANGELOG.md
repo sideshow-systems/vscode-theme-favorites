@@ -53,10 +53,10 @@ The format is based on "Keep a Changelog" and uses SemVer.
 
 - Initial public release: Theme Favorites
 - Commands:
-  - "Theme Favorites: Add Favorite"
-  - "Theme Favorites: Choose Favorite"
-  - "Theme Favorites: Toggle Favorite"
-  - "Theme Favorites: Open Theme"
-  - "Theme Favorites: Remove Favorite"
-  - "Theme Favorites: Refresh"
+    - "Theme Favorites: Add Favorite"
+    - "Theme Favorites: Choose Favorite"
+    - "Theme Favorites: Toggle Favorite"
+    - "Theme Favorites: Open Theme"
+    - "Theme Favorites: Remove Favorite"
+    - "Theme Favorites: Refresh"
 - Explorer view for managing favorite themes

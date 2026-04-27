@@ -52,29 +52,83 @@
 		},
 		"views": {
 			"theme-favorites": [
-				{ "id": "theme-favorites-favorites", "name": "%views.favorites.name%", "type": "webview" },
-				{ "id": "theme-favorites-webview", "name": "%views.browse.name%", "type": "webview" }
+				{
+					"id": "theme-favorites-favorites",
+					"name": "%views.favorites.name%",
+					"type": "webview"
+				},
+				{
+					"id": "theme-favorites-webview",
+					"name": "%views.browse.name%",
+					"type": "webview"
+				}
 			]
 		},
 		"commands": [
-			{ "command": "themeFavorites.addFavorite", "title": "%commands.addFavorite.title%" },
-			{ "command": "themeFavorites.removeFavorite", "title": "%commands.removeFavorite.title%" },
-			{ "command": "themeFavorites.chooseFavorite", "title": "%commands.chooseFavorite.title%" },
-			{ "command": "themeFavorites.openTheme", "title": "%commands.openTheme.title%" },
-			{ "command": "themeFavorites.toggleFavorite", "title": "%commands.toggleFavorite.title%" },
-			{ "command": "themeFavorites.refresh", "title": "%commands.refresh.title%" }
+			{
+				"command": "themeFavorites.addFavorite",
+				"title": "%commands.addFavorite.title%"
+			},
+			{
+				"command": "themeFavorites.removeFavorite",
+				"title": "%commands.removeFavorite.title%"
+			},
+			{
+				"command": "themeFavorites.chooseFavorite",
+				"title": "%commands.chooseFavorite.title%"
+			},
+			{
+				"command": "themeFavorites.openTheme",
+				"title": "%commands.openTheme.title%"
+			},
+			{
+				"command": "themeFavorites.toggleFavorite",
+				"title": "%commands.toggleFavorite.title%"
+			},
+			{
+				"command": "themeFavorites.refresh",
+				"title": "%commands.refresh.title%"
+			}
 		],
 		"menus": {
 			"view/title": [
-				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-webview", "group": "navigation" },
-				{ "command": "themeFavorites.refresh", "when": "view == theme-favorites-favorites", "group": "navigation" }
+				{
+					"command": "themeFavorites.refresh",
+					"when": "view == theme-favorites-webview",
+					"group": "navigation"
+				},
+				{
+					"command": "themeFavorites.refresh",
+					"when": "view == theme-favorites-favorites",
+					"group": "navigation"
+				}
 			],
 			"view/item/context": [
-				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-webview", "group": "navigation" },
-				{ "command": "themeFavorites.addFavorite", "when": "view == theme-favorites-webview && viewItem == notFavorited", "group": "inline" },
-				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-webview && viewItem == favorited", "group": "inline" },
-				{ "command": "themeFavorites.openTheme", "when": "view == theme-favorites-favorites", "group": "navigation" },
-				{ "command": "themeFavorites.removeFavorite", "when": "view == theme-favorites-favorites && viewItem == favoriteItem", "group": "inline" }
+				{
+					"command": "themeFavorites.openTheme",
+					"when": "view == theme-favorites-webview",
+					"group": "navigation"
+				},
+				{
+					"command": "themeFavorites.addFavorite",
+					"when": "view == theme-favorites-webview && viewItem == notFavorited",
+					"group": "inline"
+				},
+				{
+					"command": "themeFavorites.removeFavorite",
+					"when": "view == theme-favorites-webview && viewItem == favorited",
+					"group": "inline"
+				},
+				{
+					"command": "themeFavorites.openTheme",
+					"when": "view == theme-favorites-favorites",
+					"group": "navigation"
+				},
+				{
+					"command": "themeFavorites.removeFavorite",
+					"when": "view == theme-favorites-favorites && viewItem == favoriteItem",
+					"group": "inline"
+				}
 			]
 		}
 	},
@@ -82,11 +136,14 @@
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
 		"watch": "tsc -w -p ./",
+		"format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
+		"format:check": "prettier --check \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
 		"postinstall": "node ./node_modules/vscode/bin/install || true",
 		"build-package": "npx vsce package"
 	},
 	"devDependencies": {
 		"@types/node": "^18.0.0",
+		"prettier": "^3.8.3",
 		"typescript": "^4.9.5",
 		"vscode": "^1.1.37"
 	}

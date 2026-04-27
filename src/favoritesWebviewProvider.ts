@@ -3,118 +3,136 @@ import { ThemesProvider } from './themesProvider';
 import { getFavorites, setFavorites } from './favoritesUtils';
 
 export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'theme-favorites-favorites';
-    private _view?: vscode.WebviewView;
-    private _out?: vscode.OutputChannel;
+	public static readonly viewType = 'theme-favorites-favorites';
+	private _view?: vscode.WebviewView;
+	private _out?: vscode.OutputChannel;
 
-    constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext, private readonly _themesProvider: ThemesProvider, out?: vscode.OutputChannel) {
-        this._out = out;
-    }
+	constructor(
+		private readonly _extensionUri: vscode.Uri,
+		private readonly _context: vscode.ExtensionContext,
+		private readonly _themesProvider: ThemesProvider,
+		out?: vscode.OutputChannel
+	) {
+		this._out = out;
+	}
 
-    public async resolveWebviewView(webviewView: vscode.WebviewView) {
-        this._view = webviewView;
-        try {
-            webviewView.webview.options = { enableScripts: true, localResourceRoots: [this._extensionUri] };
-            webviewView.webview.html = this._getHtml(webviewView.webview);
+	public async resolveWebviewView(webviewView: vscode.WebviewView) {
+		this._view = webviewView;
+		try {
+			webviewView.webview.options = {
+				enableScripts: true,
+				localResourceRoots: [this._extensionUri],
+			};
+			webviewView.webview.html = this._getHtml(webviewView.webview);
 
-            webviewView.webview.onDidReceiveMessage(async (msg) => {
-                try {
-                    switch (msg.command) {
-                        case 'initRequest':
-                            await this._sendInit();
-                            break;
-                        case 'openTheme':
-                            if (msg.name) {
-                                await vscode.workspace.getConfiguration('workbench').update('colorTheme', msg.name, vscode.ConfigurationTarget.Global);
-                                await this._sendInit();
-                                this._themesProvider.refresh();
-                                vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
-                            }
-                            break;
-                        case 'removeFavorite':
-                            if (!msg.name) break;
-                            const favs = getFavorites();
-                            const newFavs = favs.filter(f => f !== msg.name);
-                            await setFavorites(newFavs);
-                            await this._sendInit();
-                            this._themesProvider.refresh();
-                            webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: newFavs });
-                            // Trigger global refresh so Themes webview updates its star state as well
-                            try {
-                                await vscode.commands.executeCommand('themeFavorites.refresh');
-                            } catch (e) {
-                                this._out?.appendLine(`executeCommand refresh failed: ${e}`);
-                            }
-                            break;
-                        case 'refresh':
-                            await this._sendInit();
-                            break;
-                    }
-                } catch (e) {
-                    this._out?.appendLine(`favorites webview message error: ${e}`);
-                }
-            });
+			webviewView.webview.onDidReceiveMessage(async (msg) => {
+				try {
+					switch (msg.command) {
+						case 'initRequest':
+							await this._sendInit();
+							break;
+						case 'openTheme':
+							if (msg.name) {
+								await vscode.workspace
+									.getConfiguration('workbench')
+									.update(
+										'colorTheme',
+										msg.name,
+										vscode.ConfigurationTarget.Global
+									);
+								await this._sendInit();
+								this._themesProvider.refresh();
+								vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
+							}
+							break;
+						case 'removeFavorite':
+							if (!msg.name) break;
+							const favs = getFavorites();
+							const newFavs = favs.filter((f) => f !== msg.name);
+							await setFavorites(newFavs);
+							await this._sendInit();
+							this._themesProvider.refresh();
+							webviewView.webview.postMessage({
+								command: 'favoritesUpdated',
+								favorites: newFavs,
+							});
+							// Trigger global refresh so Themes webview updates its star state as well
+							try {
+								await vscode.commands.executeCommand('themeFavorites.refresh');
+							} catch (e) {
+								this._out?.appendLine(`executeCommand refresh failed: ${e}`);
+							}
+							break;
+						case 'refresh':
+							await this._sendInit();
+							break;
+					}
+				} catch (e) {
+					this._out?.appendLine(`favorites webview message error: ${e}`);
+				}
+			});
 
-            await this._sendInit();
-        } catch (err) {
-            this._out?.appendLine(`Favorites webview init error: ${err}`);
-            try {
-                const errorMsg = `Error loading favorites: ${String(err)}`;
-                webviewView.webview.html = `<div style="padding:12px;">${errorMsg}</div>`;
-            } catch (e) { }
-        }
-    }
+			await this._sendInit();
+		} catch (err) {
+			this._out?.appendLine(`Favorites webview init error: ${err}`);
+			try {
+				const errorMsg = `Error loading favorites: ${String(err)}`;
+				webviewView.webview.html = `<div style="padding:12px;">${errorMsg}</div>`;
+			} catch (e) {}
+		}
+	}
 
-    public async refresh() {
-        await this._sendInit();
-    }
+	public async refresh() {
+		await this._sendInit();
+	}
 
-    private getWebviewStrings() {
-        const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
-        const map = {
-            'en': {
-                searchPlaceholder: 'Filter favorites...',
-                groupDark: 'Dark',
-                groupLight: 'Light',
-                groupOther: 'Other',
-                removeButton: 'Remove',
-                pageTitle: 'Favorites',
-                noFavorites: 'No favorites yet. Add themes from the Browse view.',
-                toggleColorsLabel: 'Colors'
-            },
-            'de': {
-                searchPlaceholder: 'Favoriten filtern...',
-                groupDark: 'Dunkel',
-                groupLight: 'Hell',
-                groupOther: 'Andere',
-                removeButton: 'Entfernen',
-                pageTitle: 'Theme Favoriten',
-                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
-                toggleColorsLabel: 'Farben'
-            }
-        };
-        return map[locale];
-    }
+	private getWebviewStrings() {
+		const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
+		const map = {
+			en: {
+				searchPlaceholder: 'Filter favorites...',
+				groupDark: 'Dark',
+				groupLight: 'Light',
+				groupOther: 'Other',
+				removeButton: 'Remove',
+				pageTitle: 'Favorites',
+				noFavorites: 'No favorites yet. Add themes from the Browse view.',
+				toggleColorsLabel: 'Colors',
+			},
+			de: {
+				searchPlaceholder: 'Favoriten filtern...',
+				groupDark: 'Dunkel',
+				groupLight: 'Hell',
+				groupOther: 'Andere',
+				removeButton: 'Entfernen',
+				pageTitle: 'Theme Favoriten',
+				noFavorites:
+					'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
+				toggleColorsLabel: 'Farben',
+			},
+		};
+		return map[locale];
+	}
 
-    private async _sendInit() {
-        if (!this._view) return;
-        const all = await this._themesProvider.getAllThemes();
-        const favorites = getFavorites();
-        const favItems = all.filter(t => favorites.includes(t.label));
-        const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-        this._view.webview.postMessage({
-            command: 'init',
-            themes: favItems,
-            favorites,
-            activeTheme: active,
-            strings: this.getWebviewStrings()
-        });
-    }
+	private async _sendInit() {
+		if (!this._view) return;
+		const all = await this._themesProvider.getAllThemes();
+		const favorites = getFavorites();
+		const favItems = all.filter((t) => favorites.includes(t.label));
+		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
+		this._view.webview.postMessage({
+			command: 'init',
+			themes: favItems,
+			favorites,
+			activeTheme: active,
+			strings: this.getWebviewStrings(),
+		});
+	}
 
-    private _getHtml(webview: vscode.Webview): string {
-        const nonce = getNonce();
-        const cspSource = webview.cspSource;
-        return `<!doctype html>
+	private _getHtml(webview: vscode.Webview): string {
+		const nonce = getNonce();
+		const cspSource = webview.cspSource;
+		return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -530,7 +548,13 @@ vscode.postMessage({ command: 'initRequest' });
 </script>
 </body>
 </html>`;
-    }
+	}
 }
 
-function getNonce() { let text = ''; const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; for (let i = 0; i < 32; i++) text += possible.charAt(Math.floor(Math.random() * possible.length)); return text; }
+function getNonce() {
+	let text = '';
+	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	for (let i = 0; i < 32; i++)
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	return text;
+}

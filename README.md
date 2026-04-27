@@ -24,20 +24,20 @@ Quickly manage and switch between your favorite VS Code themes. This extension a
 ### Usage
 
 1. **Add a Favorite Theme**:
-   - Open Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
-   - Search for "Theme Favorites: Add Favorite"
-   - Select a theme from the list to add it to favorites
+    - Open Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
+    - Search for "Theme Favorites: Add Favorite"
+    - Select a theme from the list to add it to favorites
 
 2. **Switch Between Favorites**:
-   - Open Command Palette and select "Theme Favorites: Choose Favorite"
-   - Or click any theme in the "Theme Favorites" view in the Explorer sidebar
+    - Open Command Palette and select "Theme Favorites: Choose Favorite"
+    - Or click any theme in the "Theme Favorites" view in the Explorer sidebar
 
 3. **Remove from Favorites**:
-   - Right-click on a theme in the "Theme Favorites" view
-   - Select "Theme Favorites: Remove Favorite"
+    - Right-click on a theme in the "Theme Favorites" view
+    - Select "Theme Favorites: Remove Favorite"
 
 4. **Toggle Theme**:
-   - Use "Theme Favorites: Toggle Favorite" to quickly add/remove the current theme
+    - Use "Theme Favorites: Toggle Favorite" to quickly add/remove the current theme
 
 ## Commands
 
@@ -53,14 +53,16 @@ Quickly manage and switch between your favorite VS Code themes. This extension a
 ### Quick Start
 
 - Install dependencies:
-  ```bash
-  npm install
-  ```
+
+    ```bash
+    npm install
+    ```
 
 - Compile TypeScript:
-  ```bash
-  npm run compile
-  ```
+
+    ```bash
+    npm run compile
+    ```
 
 - Start the extension in VS Code: Press `F5` (Run Extension debug configuration)
 
@@ -76,14 +78,14 @@ Quickly manage and switch between your favorite VS Code themes. This extension a
 ### Setup Instructions
 
 1. **Local Testing**:
-   ```bash
-   # Create package
-   npx vsce package
-   # Install locally
-   code --install-extension *.vsix
-   # Or publish directly
-   npx vsce publish --pat "$VSCE_PAT"
-   ```
+    ```bash
+    # Create package
+    npx vsce package
+    # Install locally
+    code --install-extension *.vsix
+    # Or publish directly
+    npx vsce publish --pat "$VSCE_PAT"
+    ```
 
 ## Notes
 
