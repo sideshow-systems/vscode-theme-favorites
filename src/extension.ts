@@ -29,7 +29,7 @@ function getName(arg: any): string | undefined {
  */
 async function migrateFavoritesIfNeeded(context: vscode.ExtensionContext): Promise<void> {
 	const migratedKey = 'themeFavorites.migrated';
-	
+
 	// Überprüfe, ob die Migration bereits durchgeführt wurde
 	if (context.globalState.get<boolean>(migratedKey)) {
 		return;
@@ -47,8 +47,8 @@ async function migrateFavoritesIfNeeded(context: vscode.ExtensionContext): Promi
 }
 
 /**
-  * Aktivierung der Extension: Provider und Commands registrieren.
-  */
+ * Aktivierung der Extension: Provider und Commands registrieren.
+ */
 export function activate(context: vscode.ExtensionContext) {
 	const themesProvider = new ThemesProvider(context);
 
@@ -58,23 +58,44 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(out);
 
 	// Migration durchführen
-	migrateFavoritesIfNeeded(context).catch(e => {
+	migrateFavoritesIfNeeded(context).catch((e) => {
 		out.appendLine(`Migration failed: ${e}`);
 	});
 
-	const favoritesWebview = new FavoritesWebviewProvider(context.extensionUri, context, themesProvider, out);
-	const themesWebview = new ThemesWebviewProvider(context.extensionUri, context, themesProvider, out, async () => {
-		try { await favoritesWebview.refresh(); } catch (e) { out.appendLine(`favoritesWebview.refresh() failed: ${e}`); }
-	});
+	const favoritesWebview = new FavoritesWebviewProvider(
+		context.extensionUri,
+		context,
+		themesProvider,
+		out
+	);
+	const themesWebview = new ThemesWebviewProvider(
+		context.extensionUri,
+		context,
+		themesProvider,
+		out,
+		async () => {
+			try {
+				await favoritesWebview.refresh();
+			} catch (e) {
+				out.appendLine(`favoritesWebview.refresh() failed: ${e}`);
+			}
+		}
+	);
 
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(FavoritesWebviewProvider.viewType, favoritesWebview, { webviewOptions: { retainContextWhenHidden: true } }),
-		vscode.window.registerWebviewViewProvider(ThemesWebviewProvider.viewType, themesWebview, { webviewOptions: { retainContextWhenHidden: true } })
+		vscode.window.registerWebviewViewProvider(
+			FavoritesWebviewProvider.viewType,
+			favoritesWebview,
+			{ webviewOptions: { retainContextWhenHidden: true } }
+		),
+		vscode.window.registerWebviewViewProvider(ThemesWebviewProvider.viewType, themesWebview, {
+			webviewOptions: { retainContextWhenHidden: true },
+		})
 	);
 	out.appendLine('Registered FavoritesWebviewProvider and ThemesWebviewProvider');
 
 	context.subscriptions.push(
-        vscode.commands.registerCommand('themeFavorites.addFavorite', async (arg?: any) => {
+		vscode.commands.registerCommand('themeFavorites.addFavorite', async (arg?: any) => {
 			const name = getName(arg);
 			if (name) {
 				await addFavorite(context, name, favoritesWebview, themesProvider);
@@ -82,8 +103,10 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			const all = await themesProvider.getAllThemes();
 			const favs = getFavorites();
-			const choices = all.filter(t => !favs.includes(t.label)).map(t => t.label);
-			const pick = await vscode.window.showQuickPick(choices, { placeHolder: 'Theme wählen, um als Favorit hinzuzufügen' });
+			const choices = all.filter((t) => !favs.includes(t.label)).map((t) => t.label);
+			const pick = await vscode.window.showQuickPick(choices, {
+				placeHolder: 'Theme wählen, um als Favorit hinzuzufügen',
+			});
 			if (!pick) return;
 			await addFavorite(context, pick, favoritesWebview, themesProvider);
 		}),
@@ -95,8 +118,13 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			const favs = getFavorites();
-			if (!favs || favs.length === 0) { vscode.window.showInformationMessage('No favorites available'); return; }
-			const pick = await vscode.window.showQuickPick(favs, { placeHolder: 'Favorit entfernen' });
+			if (!favs || favs.length === 0) {
+				vscode.window.showInformationMessage('No favorites available');
+				return;
+			}
+			const pick = await vscode.window.showQuickPick(favs, {
+				placeHolder: 'Favorit entfernen',
+			});
 			if (!pick) return;
 			await removeFavorite(context, pick, favoritesWebview, themesProvider);
 		}),
@@ -115,7 +143,9 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('themeFavorites.openTheme', async (arg?: any) => {
 			const name = getName(arg);
 			if (!name) return;
-			await vscode.workspace.getConfiguration('workbench').update('colorTheme', name, vscode.ConfigurationTarget.Global);
+			await vscode.workspace
+				.getConfiguration('workbench')
+				.update('colorTheme', name, vscode.ConfigurationTarget.Global);
 			await favoritesWebview.refresh();
 			themesWebview.refresh();
 			vscode.window.showInformationMessage(`Theme changed: ${name}`);
@@ -130,17 +160,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Refresh views when the user changes the color theme externally
 	context.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration(e => {
+		vscode.workspace.onDidChangeConfiguration((e) => {
 			if (e.affectsConfiguration && e.affectsConfiguration('workbench.colorTheme')) {
 				favoritesWebview.refresh();
 				themesWebview.refresh();
 			}
 		})
 	);
-	
+
 	// Refresh views when theme favorites configuration changes
 	context.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration(e => {
+		vscode.workspace.onDidChangeConfiguration((e) => {
 			if (e.affectsConfiguration(FAVORITES_CONFIG_KEY)) {
 				favoritesWebview.refresh();
 				themesWebview.refresh();
@@ -150,14 +180,23 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 /**
-  * Favorit hinzufügen und Views aktualisieren.
-  */
-async function addFavorite(context: vscode.ExtensionContext, name: string, favoritesWebview: any, themesProvider: ThemesProvider) {
+ * Favorit hinzufügen und Views aktualisieren.
+ */
+async function addFavorite(
+	context: vscode.ExtensionContext,
+	name: string,
+	favoritesWebview: any,
+	themesProvider: ThemesProvider
+) {
 	const favs = getFavorites();
 	if (!favs.includes(name)) {
 		favs.push(name);
 		await setFavorites(favs);
-		try { await favoritesWebview.refresh(); } catch (e) { /* ignore */ }
+		try {
+			await favoritesWebview.refresh();
+		} catch (e) {
+			/* ignore */
+		}
 		themesProvider.refresh();
 		vscode.window.showInformationMessage(`Favorite added: ${name}`);
 	} else {
@@ -166,20 +205,32 @@ async function addFavorite(context: vscode.ExtensionContext, name: string, favor
 }
 
 /**
-  * Favorit entfernen und Views aktualisieren.
-  */
-async function removeFavorite(context: vscode.ExtensionContext, name: string, favoritesWebview: any, themesProvider: ThemesProvider) {
+ * Favorit entfernen und Views aktualisieren.
+ */
+async function removeFavorite(
+	context: vscode.ExtensionContext,
+	name: string,
+	favoritesWebview: any,
+	themesProvider: ThemesProvider
+) {
 	const favs = getFavorites();
-	const newFavs = favs.filter(f => f !== name);
+	const newFavs = favs.filter((f) => f !== name);
 	await setFavorites(newFavs);
-	try { await favoritesWebview.refresh(); } catch (e) { /* ignore */ }
+	try {
+		await favoritesWebview.refresh();
+	} catch (e) {
+		/* ignore */
+	}
 	try {
 		await vscode.commands.executeCommand('themeFavorites.refresh');
 	} catch (e) {
-		try { themesProvider.refresh(); } catch (_) { /* ignore */ }
+		try {
+			themesProvider.refresh();
+		} catch (_) {
+			/* ignore */
+		}
 	}
 	vscode.window.showInformationMessage(`Favorite removed: ${name}`);
 }
 
-export function deactivate() { }
-
+export function deactivate() {}

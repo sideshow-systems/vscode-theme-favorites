@@ -17,7 +17,13 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	 * @param _out optionaler OutputChannel für Diagnostics
 	 */
 	private _favoritesRefresh?: () => Promise<void>;
-	constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext, private readonly _themesProvider: ThemesProvider, out?: vscode.OutputChannel, favoritesRefresh?: () => Promise<void>) {
+	constructor(
+		private readonly _extensionUri: vscode.Uri,
+		private readonly _context: vscode.ExtensionContext,
+		private readonly _themesProvider: ThemesProvider,
+		out?: vscode.OutputChannel,
+		favoritesRefresh?: () => Promise<void>
+	) {
 		this._out = out;
 		this._favoritesRefresh = favoritesRefresh;
 	}
@@ -25,10 +31,17 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	/**
 	 * Wird aufgerufen, wenn die Webview sichtbar wird.
 	 */
-	public async resolveWebviewView(webviewView: vscode.WebviewView, _context: vscode.WebviewViewResolveContext, _token: vscode.CancellationToken) {
+	public async resolveWebviewView(
+		webviewView: vscode.WebviewView,
+		_context: vscode.WebviewViewResolveContext,
+		_token: vscode.CancellationToken
+	) {
 		this._view = webviewView;
 		try {
-			webviewView.webview.options = { enableScripts: true, localResourceRoots: [this._extensionUri] };
+			webviewView.webview.options = {
+				enableScripts: true,
+				localResourceRoots: [this._extensionUri],
+			};
 			webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
 			// Nachrichten vom Webview empfangen
@@ -40,27 +53,38 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 							break;
 						case 'applyTheme':
 							if (message.name) {
-								await vscode.workspace.getConfiguration('workbench').update('colorTheme', message.name, vscode.ConfigurationTarget.Global);
+								await vscode.workspace
+									.getConfiguration('workbench')
+									.update(
+										'colorTheme',
+										message.name,
+										vscode.ConfigurationTarget.Global
+									);
 								this._themesProvider.refresh();
 								await this._sendInit();
-								vscode.window.showInformationMessage(`Theme changed: ${message.name}`);
+								vscode.window.showInformationMessage(
+									`Theme changed: ${message.name}`
+								);
 							}
 							break;
 						case 'toggleFavorite':
 							if (!message.name) break;
-						const favs = getFavorites();
-						if (favs.includes(message.name)) {
-							const newFavs = favs.filter(f => f !== message.name);
-							await setFavorites(newFavs);
-						} else {
-							favs.push(message.name);
-							await setFavorites(favs);
-						}
-						// refresh internal provider state
-						this._themesProvider.refresh();
-						// notify this webview
-						const updatedFavs = getFavorites();
-							webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: updatedFavs });
+							const favs = getFavorites();
+							if (favs.includes(message.name)) {
+								const newFavs = favs.filter((f) => f !== message.name);
+								await setFavorites(newFavs);
+							} else {
+								favs.push(message.name);
+								await setFavorites(favs);
+							}
+							// refresh internal provider state
+							this._themesProvider.refresh();
+							// notify this webview
+							const updatedFavs = getFavorites();
+							webviewView.webview.postMessage({
+								command: 'favoritesUpdated',
+								favorites: updatedFavs,
+							});
 							// also notify favorites webview (if available)
 							try {
 								if (this._favoritesRefresh) await this._favoritesRefresh();
@@ -87,12 +111,19 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 			await this._sendInit();
 
 			// auf externe Theme‑Änderungen hören
-			this._context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-				if (e.affectsConfiguration && e.affectsConfiguration('workbench.colorTheme')) {
-					const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-					webviewView.webview.postMessage({ command: 'activeThemeChanged', activeTheme: active });
-				}
-			}));
+			this._context.subscriptions.push(
+				vscode.workspace.onDidChangeConfiguration((e) => {
+					if (e.affectsConfiguration && e.affectsConfiguration('workbench.colorTheme')) {
+						const active = vscode.workspace
+							.getConfiguration('workbench')
+							.get<string>('colorTheme', '');
+						webviewView.webview.postMessage({
+							command: 'activeThemeChanged',
+							activeTheme: active,
+						});
+					}
+				})
+			);
 		} catch (err) {
 			const msg = `Error initializing theme webview: ${err}`;
 			this._out?.appendLine(msg);
@@ -111,7 +142,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 	private getWebviewStrings() {
 		const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
 		const map = {
-			'en': {
+			en: {
 				searchPlaceholder: 'Search themes...',
 				filterAll: 'All',
 				filterDark: 'Dark',
@@ -121,9 +152,9 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 				groupOther: 'Other',
 				pageTitle: 'Themes',
 				noThemesFound: 'No themes found',
-				toggleColorsLabel: 'Colors'
+				toggleColorsLabel: 'Colors',
 			},
-			'de': {
+			de: {
 				searchPlaceholder: 'Themes suchen...',
 				filterAll: 'Alle',
 				filterDark: 'Dunkel',
@@ -133,8 +164,8 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 				groupOther: 'Andere',
 				pageTitle: 'Themes durchsuchen',
 				noThemesFound: 'Keine Themes gefunden',
-				toggleColorsLabel: 'Farben'
-			}
+				toggleColorsLabel: 'Farben',
+			},
 		};
 		return map[locale];
 	}
@@ -149,7 +180,7 @@ export class ThemesWebviewProvider implements vscode.WebviewViewProvider {
 			themes,
 			favorites,
 			activeTheme: active,
-			strings: this.getWebviewStrings()
+			strings: this.getWebviewStrings(),
 		});
 	}
 
@@ -680,7 +711,10 @@ vscode.postMessage({ command: 'initRequest' });
 }
 
 function escapeHtml(str: string): string {
-    return str.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as any)[c]);
+	return str.replace(
+		/[&<>"]/g,
+		(c) => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }) as any)[c]
+	);
 }
 
 /** Helper: nonce erzeugen */

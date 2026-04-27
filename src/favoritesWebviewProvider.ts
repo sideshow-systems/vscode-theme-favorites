@@ -3,118 +3,145 @@ import { ThemesProvider } from './themesProvider';
 import { getFavorites, setFavorites } from './favoritesUtils';
 
 export class FavoritesWebviewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'theme-favorites-favorites';
-    private _view?: vscode.WebviewView;
-    private _out?: vscode.OutputChannel;
+	public static readonly viewType = 'theme-favorites-favorites';
+	private _view?: vscode.WebviewView;
+	private _out?: vscode.OutputChannel;
 
-    constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext, private readonly _themesProvider: ThemesProvider, out?: vscode.OutputChannel) {
-        this._out = out;
-    }
+	constructor(
+		private readonly _extensionUri: vscode.Uri,
+		private readonly _context: vscode.ExtensionContext,
+		private readonly _themesProvider: ThemesProvider,
+		out?: vscode.OutputChannel
+	) {
+		this._out = out;
+	}
 
-    public async resolveWebviewView(webviewView: vscode.WebviewView) {
-        this._view = webviewView;
-        try {
-            webviewView.webview.options = { enableScripts: true, localResourceRoots: [this._extensionUri] };
-            webviewView.webview.html = this._getHtml(webviewView.webview);
+	public async resolveWebviewView(webviewView: vscode.WebviewView) {
+		this._view = webviewView;
+		try {
+			webviewView.webview.options = {
+				enableScripts: true,
+				localResourceRoots: [this._extensionUri],
+			};
+			webviewView.webview.html = this._getHtml(webviewView.webview);
 
-            webviewView.webview.onDidReceiveMessage(async (msg) => {
-                try {
-                    switch (msg.command) {
-                        case 'initRequest':
-                            await this._sendInit();
-                            break;
-                        case 'openTheme':
-                            if (msg.name) {
-                                await vscode.workspace.getConfiguration('workbench').update('colorTheme', msg.name, vscode.ConfigurationTarget.Global);
-                                await this._sendInit();
-                                this._themesProvider.refresh();
-                                vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
-                            }
-                            break;
-                        case 'removeFavorite':
-                            if (!msg.name) break;
-                            const favs = getFavorites();
-                            const newFavs = favs.filter(f => f !== msg.name);
-                            await setFavorites(newFavs);
-                            await this._sendInit();
-                            this._themesProvider.refresh();
-                            webviewView.webview.postMessage({ command: 'favoritesUpdated', favorites: newFavs });
-                            // Trigger global refresh so Themes webview updates its star state as well
-                            try {
-                                await vscode.commands.executeCommand('themeFavorites.refresh');
-                            } catch (e) {
-                                this._out?.appendLine(`executeCommand refresh failed: ${e}`);
-                            }
-                            break;
-                        case 'refresh':
-                            await this._sendInit();
-                            break;
-                    }
-                } catch (e) {
-                    this._out?.appendLine(`favorites webview message error: ${e}`);
-                }
-            });
+			webviewView.webview.onDidReceiveMessage(async (msg) => {
+				try {
+					switch (msg.command) {
+						case 'initRequest':
+							await this._sendInit();
+							break;
+						case 'openTheme':
+							if (msg.name) {
+								await vscode.workspace
+									.getConfiguration('workbench')
+									.update(
+										'colorTheme',
+										msg.name,
+										vscode.ConfigurationTarget.Global
+									);
+								await this._sendInit();
+								this._themesProvider.refresh();
+								vscode.window.showInformationMessage(`Theme changed: ${msg.name}`);
+							}
+							break;
+						case 'reorderFavorites':
+							if (Array.isArray(msg.favorites)) {
+								await setFavorites(msg.favorites);
+								await this._sendInit();
+							}
+							break;
+						case 'removeFavorite':
+							if (!msg.name) break;
+							const favs = getFavorites();
+							const newFavs = favs.filter((f) => f !== msg.name);
+							await setFavorites(newFavs);
+							await this._sendInit();
+							this._themesProvider.refresh();
+							webviewView.webview.postMessage({
+								command: 'favoritesUpdated',
+								favorites: newFavs,
+							});
+							// Trigger global refresh so Themes webview updates its star state as well
+							try {
+								await vscode.commands.executeCommand('themeFavorites.refresh');
+							} catch (e) {
+								this._out?.appendLine(`executeCommand refresh failed: ${e}`);
+							}
+							break;
+						case 'refresh':
+							await this._sendInit();
+							break;
+					}
+				} catch (e) {
+					this._out?.appendLine(`favorites webview message error: ${e}`);
+				}
+			});
 
-            await this._sendInit();
-        } catch (err) {
-            this._out?.appendLine(`Favorites webview init error: ${err}`);
-            try {
-                const errorMsg = `Error loading favorites: ${String(err)}`;
-                webviewView.webview.html = `<div style="padding:12px;">${errorMsg}</div>`;
-            } catch (e) { }
-        }
-    }
+			await this._sendInit();
+		} catch (err) {
+			this._out?.appendLine(`Favorites webview init error: ${err}`);
+			try {
+				const errorMsg = `Error loading favorites: ${String(err)}`;
+				webviewView.webview.html = `<div style="padding:12px;">${errorMsg}</div>`;
+			} catch (e) {}
+		}
+	}
 
-    public async refresh() {
-        await this._sendInit();
-    }
+	public async refresh() {
+		await this._sendInit();
+	}
 
-    private getWebviewStrings() {
-        const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
-        const map = {
-            'en': {
-                searchPlaceholder: 'Filter favorites...',
-                groupDark: 'Dark',
-                groupLight: 'Light',
-                groupOther: 'Other',
-                removeButton: 'Remove',
-                pageTitle: 'Favorites',
-                noFavorites: 'No favorites yet. Add themes from the Browse view.',
-                toggleColorsLabel: 'Colors'
-            },
-            'de': {
-                searchPlaceholder: 'Favoriten filtern...',
-                groupDark: 'Dunkel',
-                groupLight: 'Hell',
-                groupOther: 'Andere',
-                removeButton: 'Entfernen',
-                pageTitle: 'Theme Favoriten',
-                noFavorites: 'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
-                toggleColorsLabel: 'Farben'
-            }
-        };
-        return map[locale];
-    }
+	private getWebviewStrings() {
+		const locale = vscode.env.language && vscode.env.language.startsWith('de') ? 'de' : 'en';
+		const map = {
+			en: {
+				searchPlaceholder: 'Filter favorites...',
+				groupDark: 'Dark',
+				groupLight: 'Light',
+				groupOther: 'Other',
+				removeButton: 'Remove',
+				pageTitle: 'Favorites',
+				noFavorites: 'No favorites yet. Add themes from the Browse view.',
+				toggleColorsLabel: 'Colors',
+			},
+			de: {
+				searchPlaceholder: 'Favoriten filtern...',
+				groupDark: 'Dunkel',
+				groupLight: 'Hell',
+				groupOther: 'Andere',
+				removeButton: 'Entfernen',
+				pageTitle: 'Theme Favoriten',
+				noFavorites:
+					'Noch keine Favoriten. Fügen Sie Themes aus der Durchsuchen-Ansicht hinzu.',
+				toggleColorsLabel: 'Farben',
+			},
+		};
+		return map[locale];
+	}
 
-    private async _sendInit() {
-        if (!this._view) return;
-        const all = await this._themesProvider.getAllThemes();
-        const favorites = getFavorites();
-        const favItems = all.filter(t => favorites.includes(t.label));
-        const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
-        this._view.webview.postMessage({
-            command: 'init',
-            themes: favItems,
-            favorites,
-            activeTheme: active,
-            strings: this.getWebviewStrings()
-        });
-    }
+	private async _sendInit() {
+		if (!this._view) return;
+		const all = await this._themesProvider.getAllThemes();
+		const favorites = getFavorites();
+		const favItemMap = new Map(all.map((t) => [t.label, t]));
+		const favItems = favorites
+			.map((name) => favItemMap.get(name))
+			.filter((t): t is NonNullable<typeof t> => t !== undefined);
+		const active = vscode.workspace.getConfiguration('workbench').get<string>('colorTheme', '');
+		this._view.webview.postMessage({
+			command: 'init',
+			themes: favItems,
+			favorites,
+			activeTheme: active,
+			strings: this.getWebviewStrings(),
+		});
+	}
 
-    private _getHtml(webview: vscode.Webview): string {
-        const nonce = getNonce();
-        const cspSource = webview.cspSource;
-        return `<!doctype html>
+	private _getHtml(webview: vscode.Webview): string {
+		const nonce = getNonce();
+		const cspSource = webview.cspSource;
+		return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -292,6 +319,32 @@ body {
   background: var(--vscode-list-hoverBackground);
 }
 
+.drag-handle {
+  cursor: grab;
+  padding: 0 6px 0 2px;
+  color: var(--vscode-editorHint-foreground);
+  opacity: 0.5;
+  flex-shrink: 0;
+  user-select: none;
+  font-size: 14px;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+}
+
+.themeItem.dragging {
+  opacity: 0.4;
+}
+
+.themeItem.drag-over-top {
+  border-top: 2px solid var(--vscode-focusBorder);
+}
+
+.themeItem.drag-over-bottom {
+  border-bottom: 2px solid var(--vscode-focusBorder);
+}
+
 #noItems {
   text-align: center;
   padding: 16px 8px;
@@ -326,6 +379,7 @@ let strings = {
     pageTitle: 'Favorites',
     noFavorites: 'No favorites yet.'
 };
+let dragState = null; // { label, groupKey }
 
 function normalizeName(s) {
     if (!s) return '';
@@ -425,6 +479,72 @@ function render() {
         const active = isSameTheme(t.label, activeTheme);
         const item = document.createElement('div');
         item.className = 'themeItem' + (active ? ' active' : '');
+        item.draggable = true;
+        item.dataset.label = t.label;
+        item.dataset.group = key;
+
+        item.addEventListener('dragstart', (e) => {
+            dragState = { label: t.label, groupKey: key };
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            document.querySelectorAll('.drag-over-top, .drag-over-bottom')
+                .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+        });
+        item.addEventListener('dragover', (e) => {
+            if (!dragState || dragState.groupKey !== key) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            document.querySelectorAll('.drag-over-top, .drag-over-bottom')
+                .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+            const rect = item.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            item.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+        });
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (!dragState || dragState.groupKey !== key || dragState.label === t.label) {
+                dragState = null;
+                return;
+            }
+            const rect = item.getBoundingClientRect();
+            const insertBefore = e.clientY < rect.top + rect.height / 2;
+            const groupLabels = arr.map(x => x.label);
+            const fromIdx = groupLabels.indexOf(dragState.label);
+            const toIdx = groupLabels.indexOf(t.label);
+            if (fromIdx === -1 || toIdx === -1) { dragState = null; return; }
+            groupLabels.splice(fromIdx, 1);
+            const newToIdx = groupLabels.indexOf(t.label);
+            groupLabels.splice(insertBefore ? newToIdx : newToIdx + 1, 0, dragState.label);
+            // Rebuild full favorites array, replacing this group's items with new order
+            const groupLabelSet = new Set(arr.map(x => x.label));
+            const newFavorites = [];
+            let groupInserted = false;
+            for (const f of favorites) {
+                if (groupLabelSet.has(f)) {
+                    if (!groupInserted) {
+                        newFavorites.push(...groupLabels);
+                        groupInserted = true;
+                    }
+                } else {
+                    newFavorites.push(f);
+                }
+            }
+            dragState = null;
+            vscode.postMessage({ command: 'reorderFavorites', favorites: newFavorites });
+        });
+
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.textContent = '⠿';
+        handle.title = 'Drag to reorder';
+
         const left = document.createElement('div');
         left.className = 'left';
 
@@ -479,6 +599,7 @@ function render() {
         btn.onclick = (e) => { e.stopPropagation(); vscode.postMessage({ command: 'removeFavorite', name: t.label }); };
         item.onclick = () => { vscode.postMessage({ command: 'openTheme', name: t.label }); };
         right.appendChild(btn);
+        item.appendChild(handle);
         item.appendChild(left);
         item.appendChild(right);
         itemsContainer.appendChild(item);
@@ -530,7 +651,13 @@ vscode.postMessage({ command: 'initRequest' });
 </script>
 </body>
 </html>`;
-    }
+	}
 }
 
-function getNonce() { let text = ''; const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; for (let i = 0; i < 32; i++) text += possible.charAt(Math.floor(Math.random() * possible.length)); return text; }
+function getNonce() {
+	let text = '';
+	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	for (let i = 0; i < 32; i++)
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	return text;
+}
